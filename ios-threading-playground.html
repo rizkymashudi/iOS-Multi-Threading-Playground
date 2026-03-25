@@ -1,0 +1,3683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iOS Threading Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════
+   DRACULA DARK
+══════════════════════════════════════════════ */
+:root {
+  --bg:         #282a36;
+  --bg2:        #21222c;
+  --bg3:        #313341;
+  --bg4:        #3d3f51;
+  --border:     rgba(98,114,164,0.22);
+  --border2:    rgba(98,114,164,0.42);
+  --text:       #f8f8f2;
+  --text2:      #c5c8d6;
+  --text3:      #6272a4;
+  --main:       #8be9fd;
+  --main-dim:   rgba(139,233,253,0.13);
+  --teal:       #50fa7b;
+  --teal-dim:   rgba(80,250,123,0.13);
+  --amber:      #ffb86c;
+  --amber-dim:  rgba(255,184,108,0.14);
+  --red:        #ff5555;
+  --red-dim:    rgba(255,85,85,0.15);
+  --purple:     #bd93f9;
+  --purple-dim: rgba(189,147,249,0.14);
+  --green:      #50fa7b;
+  --green-dim:  rgba(80,250,123,0.11);
+  --pink:       #ff79c6;
+  --yellow:     #f1fa8c;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Space Grotesk', sans-serif;
+}
+/* ══════════════════════════════════════════════
+   DRACULA LIGHT
+══════════════════════════════════════════════ */
+:root.light {
+  --bg:         #f2f0f7;
+  --bg2:        #ffffff;
+  --bg3:        #ebe9f4;
+  --bg4:        #dddaed;
+  --border:     rgba(68,71,90,0.12);
+  --border2:    rgba(68,71,90,0.24);
+  --text:       #282a36;
+  --text2:      #44475a;
+  --text3:      #8690a8;
+  --main:       #0099bf;
+  --main-dim:   rgba(0,153,191,0.1);
+  --teal:       #3dba6f;
+  --teal-dim:   rgba(61,186,111,0.11);
+  --amber:      #c97c1a;
+  --amber-dim:  rgba(201,124,26,0.11);
+  --red:        #e02020;
+  --red-dim:    rgba(224,32,32,0.09);
+  --purple:     #7b4fc8;
+  --purple-dim: rgba(123,79,200,0.1);
+  --green:      #3dba6f;
+  --green-dim:  rgba(61,186,111,0.1);
+  --pink:       #c7366b;
+  --yellow:     #8a6f00;
+}
+
+/* ══════════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ══════════════════════════════════════════════
+   LAYOUT  —  sidebar | center-col | code-panel
+══════════════════════════════════════════════ */
+.app {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  flex: 0 0 220px;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  transition: flex-basis .25s ease, width .25s ease, border-color .25s ease;
+  position: relative;
+}
+.sidebar.collapsed {
+  flex: 0 0 0px;
+  width: 0px;
+  border-right-color: transparent;
+}
+.sidebar.collapsed .sidebar-inner { opacity: 0; pointer-events: none; }
+.sidebar-inner {
+  width: 220px;         /* fixed so content doesn't reflow when collapsing */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: opacity .18s ease;
+}
+.sidebar-header {
+  padding: 15px 12px 11px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.logo {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--main); margin-bottom: 2px;
+}
+.logo-sub { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.25; }
+
+.sidebar-toggle {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-family: var(--mono);
+  transition: background .12s, color .12s;
+  line-height: 1;
+}
+.sidebar-toggle:hover { background: var(--bg3); color: var(--text); }
+
+.nav { flex: 1; overflow-y: auto; padding: 6px 0 12px; }
+.nav-section {
+  padding: 9px 12px 2px;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text3); white-space: nowrap;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px; color: var(--text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: relative;
+  transition: background .1s, color .1s;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--main-dim); color: var(--main); font-weight: 500; }
+.nav-item.active::before {
+  content: ''; position: absolute;
+  left: 0; top: 0; bottom: 0; width: 2.5px;
+  background: var(--main); border-radius: 0 2px 2px 0;
+}
+.nav-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* Floating expand button */
+.expand-btn {
+  flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 6px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text3); cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  font-size: 13px; font-family: var(--mono);
+  transition: background .12s, color .12s;
+}
+.expand-btn:hover { background: var(--bg3); color: var(--text); }
+.expand-btn.visible { display: flex; }
+
+/* ── Center column ── */
+.center-col {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: calc(100vw - 320px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Topbar ── */
+.topbar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  min-height: 46px;
+  overflow: hidden;
+}
+.scene-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }
+.scene-badge {
+  font-size: 9.5px; font-weight: 600;
+  padding: 2px 8px; border-radius: 99px;
+  letter-spacing: .04em; white-space: nowrap; flex-shrink: 0;
+}
+
+/* ── Simulation area ── */
+.sim-area {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 14px;
+  background: var(--bg);
+}
+
+/* ── Code panel ── */
+.code-panel {
+  flex: 0 0 320px;
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: var(--bg2);
+}
+.code-panel-header {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 7px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--text3);
+}
+.code-scroll { flex: 1; overflow-y: auto; padding: 14px; }
+pre {
+  font-family: var(--mono); font-size: 11.5px;
+  line-height: 1.8; color: var(--text2);
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* ══════════════════════════════════════════════
+   CONTROLS & BUTTONS
+══════════════════════════════════════════════ */
+.controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 7px;
+  font-family: var(--sans); font-size: 12.5px; font-weight: 500;
+  cursor: pointer; border: 1px solid transparent; transition: all .12s;
+}
+.btn-primary { background: var(--main); color: var(--bg2); border-color: var(--main); font-weight: 600; }
+.btn-primary:hover { filter: brightness(1.1); }
+:root.light .btn-primary { color: #fff; }
+.btn-outline { background: transparent; color: var(--text2); border-color: var(--border2); }
+.btn-outline:hover { background: var(--bg3); color: var(--text); }
+.btn-danger { background: var(--red-dim); color: var(--red); border-color: rgba(255,85,85,0.32); }
+.btn-danger:hover { background: rgba(255,85,85,0.22); }
+:root.light .btn-danger { border-color: rgba(224,32,32,0.35); }
+
+/* Speed control */
+.speed-control {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 99px;
+  border: 1px solid var(--border2); background: var(--bg3);
+  font-family: var(--sans); font-size: 11px; font-weight: 500; color: var(--text2);
+  flex-shrink: 0;
+}
+.speed-control input[type=range] { width: 60px; accent-color: var(--purple); margin: 0; }
+.speed-val { font-family: var(--mono); font-size: 11px; color: var(--purple); min-width: 26px; font-weight: 600; }
+
+/* Theme toggle */
+.theme-toggle {
+  margin-left: auto; flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border-radius: 99px;
+  border: 1px solid var(--border2); background: var(--bg3);
+  font-family: var(--sans); font-size: 11px; font-weight: 500; color: var(--text2);
+  cursor: pointer; user-select: none;
+}
+.theme-toggle:hover { background: var(--bg4); color: var(--text); }
+.theme-icon { font-size: 13px; transition: transform .4s ease; }
+.theme-toggle:hover .theme-icon { transform: rotate(25deg) scale(1.15); }
+
+/* ══════════════════════════════════════════════
+   THREAD CONTAINERS
+══════════════════════════════════════════════ */
+.thread-container { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.thread-header {
+  padding: 9px 14px; display: flex; align-items: center;
+  justify-content: space-between; border-bottom: 1px solid var(--border);
+  background: var(--bg4);
+}
+.thread-name { font-size: 11.5px; font-weight: 600; font-family: var(--mono); display: flex; align-items: center; gap: 7px; }
+.thread-track { padding: 10px 14px; min-height: 54px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; position: relative; }
+
+/* Task blocks */
+.task-block {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 5px;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  animation: slideIn .28s ease; white-space: nowrap;
+}
+@keyframes slideIn { from { opacity:0; transform:translateY(-3px) scale(.96); } to { opacity:1; transform:none; } }
+@keyframes pulse-run { 0%,100%{opacity:1} 50%{opacity:.55} }
+.task-running { animation: slideIn .28s ease, pulse-run 1s ease-in-out infinite; }
+.task-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* Log panel */
+.log-panel { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.log-header { padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--bg4); display: flex; align-items: center; justify-content: space-between; }
+.log-title { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); }
+.log-body { padding: 9px 12px; height: 140px; overflow-y: auto; font-family: var(--mono); font-size: 11px; line-height: 1.7; }
+.log-entry { display: flex; gap: 9px; padding: 1px 0; animation: fadeLog .2s ease; }
+@keyframes fadeLog { from{opacity:0} to{opacity:1} }
+.log-time { color: var(--text3); flex-shrink: 0; }
+.log-thread { flex-shrink: 0; font-weight: 600; }
+.log-msg { color: var(--text2); }
+.log-warn { color: var(--amber); }
+.log-error { color: var(--red); }
+.log-success { color: var(--teal); }
+
+/* Warnings */
+.warning-box {
+  background: var(--red-dim); border: 1px solid rgba(255,85,85,0.3); border-radius: 9px;
+  padding: 12px 16px; display: flex; gap: 10px; align-items: flex-start;
+  animation: shakeWarn .4s ease;
+}
+@keyframes shakeWarn { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
+.warning-icon { font-size: 16px; flex-shrink: 0; }
+.warning-title { font-size: 12.5px; font-weight: 600; color: var(--red); margin-bottom: 3px; }
+.warning-body { font-size: 11.5px; color: #ff8080; line-height: 1.55; }
+:root.light .warning-box { background: rgba(224,32,32,0.07); border-color: rgba(224,32,32,0.28); }
+:root.light .warning-title { color: #e02020; }
+:root.light .warning-body { color: #9e0808; }
+
+/* Progress bar */
+.progress-bar { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 5px; }
+.progress-fill { height: 100%; border-radius: 99px; transition: width .05s linear; }
+
+/* Slider row */
+.slider-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text2); }
+input[type=range] { flex:1; accent-color: var(--main); cursor: pointer; }
+.slider-val { min-width: 32px; text-align: right; font-family: var(--mono); font-size: 11px; color: var(--main); }
+
+/* Status pill */
+.status-pill { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; letter-spacing: .04em; }
+
+/* Info card */
+.info-card {
+  background: var(--main-dim); border: 1px solid rgba(139,233,253,0.22);
+  border-radius: 9px; padding: 10px 14px; font-size: 12px;
+  color: var(--main); line-height: 1.6;
+}
+:root.light .info-card { color: #004f78; background: linear-gradient(135deg,rgba(0,153,191,0.08),rgba(123,79,200,0.05)); border-color: rgba(0,153,191,0.25); }
+
+/* Section heading */
+.section-heading { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+
+/* Actor box */
+.actor-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.actor-title { font-family: var(--mono); font-size: 11.5px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.actor-queue { display: flex; flex-direction: column; gap: 4px; }
+.actor-task { display: flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 5px; font-family: var(--mono); font-size: 11px; background: var(--bg4); border: 1px solid var(--border); animation: slideIn .28s ease; }
+
+/* Queue items */
+.queue-item { padding: 3px 9px; border-radius: 4px; font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--border2); background: var(--bg4); color: var(--text2); animation: slideIn .22s ease; }
+
+/* Sendable badge */
+.sendable-check { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:2px 7px; border-radius:99px; }
+
+/* Scenes */
+.scene { display: none; }
+.scene.active { display: flex; flex-direction: column; gap: 14px; }
+
+/* Animations */
+@keyframes deadSpin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+.spin { display:inline-block; animation: deadSpin 1.5s linear infinite; }
+@keyframes raceFl { 0%,100%{background:var(--bg4)} 50%{background:rgba(245,166,35,0.25)} }
+.race-flash { animation: raceFl .5s ease 3; }
+
+/* ══════════════════════════════════════════════
+   SYNTAX HIGHLIGHTING  — Dracula canonical
+══════════════════════════════════════════════ */
+.kw   { color: #ff79c6; }
+.fn   { color: #50fa7b; }
+.str  { color: #f1fa8c; }
+.cm   { color: #6272a4; }
+.type { color: #bd93f9; }
+.num  { color: #ffb86c; }
+:root.light .kw   { color: #c7366b; }
+:root.light .fn   { color: #3dba6f; }
+:root.light .str  { color: #8a6f00; }
+:root.light .cm   { color: #8690a8; font-style: italic; }
+:root.light .type { color: #7b4fc8; }
+:root.light .num  { color: #c97c1a; }
+:root.light pre   { color: #44475a; }
+:root.light .info-card strong { color: #004f78; }
+:root.light .log-warn  { color: #c97c1a; }
+:root.light .log-error { color: #e02020; }
+:root.light .log-success { color: #3dba6f; }
+:root.light .code-panel { background: #faf9ff; }
+:root.light .sim-area   { background: #f6f4fb; }
+:root.light .nav-item.active { background: rgba(0,153,191,0.1); color: #0099bf; }
+:root.light .nav-item.active::before { background: #0099bf; }
+
+/* ══════════════════════════════════════════════
+   TIMELINE
+══════════════════════════════════════════════ */
+.timeline-panel { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.timeline-header { padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--bg4); display: flex; align-items: center; justify-content: space-between; }
+.timeline-title { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+.timeline-title-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); flex-shrink: 0; }
+.timeline-body { padding: 10px 12px 12px; overflow-x: hidden; }
+.tl-ruler { display: flex; margin-left: 106px; margin-bottom: 4px; }
+.tl-tick { flex: 1; text-align: right; font-family: var(--mono); font-size: 8.5px; color: var(--text3); padding-right: 2px; border-right: 1px solid var(--border); line-height: 1; }
+.tl-canvas { position: relative; }
+.tl-lane { display: flex; align-items: flex-start; margin-bottom: 4px; }
+.tl-lane:last-child { margin-bottom: 0; }
+.tl-label { width: 106px; flex-shrink: 0; font-family: var(--mono); font-size: 9.5px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 7px; padding-top: 5px; line-height: 1; }
+.tl-rows { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.tl-track { height: 22px; position: relative; background: var(--bg4); border-radius: 3px; overflow: hidden; width: 100%; }
+.tl-block {
+  position: absolute; top: 2px; height: 18px; border-radius: 3px;
+  display: flex; align-items: center; padding: 0 4px;
+  font-family: var(--mono); font-size: 8.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 4px; cursor: default;
+  transition: opacity .15s; animation: tlSlide .2s ease;
+}
+@keyframes tlSlide { from{opacity:0;transform:scaleX(0.6);transform-origin:left} to{opacity:1;transform:scaleX(1)} }
+.tl-block:hover { opacity:.7 !important; z-index:4; }
+.tl-playhead { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--pink); opacity: .85; pointer-events: none; z-index: 10; }
+.tl-playhead::before { content: ''; position: absolute; top: -3px; left: -3.25px; width: 8px; height: 8px; border-radius: 50%; background: var(--pink); }
+.tl-empty { font-family: var(--mono); font-size: 10.5px; color: var(--text3); padding: 12px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-header">
+        <div>
+          <div class="logo">iOS Dev</div>
+          <div class="logo-sub">Threading<br>Playground</div>
+        </div>
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse sidebar">&#x276E;</button>
+      </div>
+      <nav class="nav">
+      <div class="nav-section">Fundamentals</div>
+      <div class="nav-item active" onclick="showScene('gcd')">
+        <div class="nav-dot" style="background:var(--main)"></div>
+        GCD &amp; Queues
+      </div>
+      <div class="nav-item" onclick="showScene('mainthread')">
+        <div class="nav-dot" style="background:var(--teal)"></div>
+        Main Thread Rule
+      </div>
+      <div class="nav-item" onclick="showScene('qos')">
+        <div class="nav-dot" style="background:var(--purple)"></div>
+        QoS Classes
+      </div>
+
+      <div class="nav-section">Pitfalls</div>
+      <div class="nav-item" onclick="showScene('deadlock')">
+        <div class="nav-dot" style="background:var(--red)"></div>
+        Deadlock
+      </div>
+      <div class="nav-item" onclick="showScene('race')">
+        <div class="nav-dot" style="background:var(--amber)"></div>
+        Data Race
+      </div>
+      <div class="nav-item" onclick="showScene('explosion')">
+        <div class="nav-dot" style="background:var(--amber)"></div>
+        Thread Explosion
+      </div>
+
+      <div class="nav-section">Synchronization</div>
+      <div class="nav-item" onclick="showScene('barrier')">
+        <div class="nav-dot" style="background:var(--purple)"></div>
+        Dispatch Barrier
+      </div>
+      <div class="nav-item" onclick="showScene('actor')">
+        <div class="nav-dot" style="background:var(--teal)"></div>
+        Swift Actors
+      </div>
+      <div class="nav-item" onclick="showScene('serial')">
+        <div class="nav-dot" style="background:var(--green)"></div>
+        Serial Isolation
+      </div>
+
+      <div class="nav-section">Modern Swift</div>
+      <div class="nav-item" onclick="showScene('asyncawait')">
+        <div class="nav-dot" style="background:var(--main)"></div>
+        async/await
+      </div>
+      <div class="nav-item" onclick="showScene('combine')">
+        <div class="nav-dot" style="background:var(--purple)"></div>
+        Combine Scheduler
+      </div>
+      <div class="nav-item" onclick="showScene('reentrancy')">
+        <div class="nav-dot" style="background:var(--red)"></div>
+        Actor Reentrancy
+      </div>
+
+      <div class="nav-section">Coordination</div>
+      <div class="nav-item" onclick="showScene('dispatchgroup')">
+        <div class="nav-dot" style="background:var(--main)"></div>
+        DispatchGroup
+      </div>
+      <div class="nav-item" onclick="showScene('semaphore')">
+        <div class="nav-dot" style="background:var(--purple)"></div>
+        DispatchSemaphore
+      </div>
+      <div class="nav-item" onclick="showScene('taskgroup')">
+        <div class="nav-dot" style="background:var(--teal)"></div>
+        TaskGroup
+      </div>
+      <div class="nav-item" onclick="showScene('taskcancellation')">
+        <div class="nav-dot" style="background:var(--red)"></div>
+        Task Cancellation
+      </div>
+
+      <div class="nav-section">Safety &amp; Tools</div>
+      <div class="nav-item" onclick="showScene('locks')">
+        <div class="nav-dot" style="background:var(--amber)"></div>
+        NSLock / os_unfair_lock
+      </div>
+      <div class="nav-item" onclick="showScene('atomic')">
+        <div class="nav-dot" style="background:var(--green)"></div>
+        @Atomic Property
+      </div>
+      <div class="nav-item" onclick="showScene('sendable')">
+        <div class="nav-dot" style="background:var(--purple)"></div>
+        Sendable &amp; Actors
+      </div>
+      <div class="nav-item" onclick="showScene('priorityinversion')">
+        <div class="nav-dot" style="background:var(--amber)"></div>
+        Priority Inversion
+      </div>
+    </nav>
+    </div>
+  </aside>
+
+  <!-- ═══ CENTER COL: topbar + sim-area ═══ -->
+  <div class="center-col">
+
+    <div class="topbar" id="topbar">
+      <!-- Expand btn shown when sidebar collapsed -->
+      <button class="expand-btn" id="expand-btn" onclick="toggleSidebar()" title="Expand sidebar" style="display:none">&#x276F;</button>
+      <div class="scene-title" id="scene-title">GCD &amp; Queues</div>
+      <span class="scene-badge" id="scene-badge" style="background:var(--main-dim);color:var(--main)">Fundamental</span>
+      <div class="speed-control" title="Simulation speed">
+        <span>&#x23E9;</span>
+        <span style="color:var(--text3)">Speed</span>
+        <input type="range" min="0.25" max="4" step="0.25" value="1" id="speed-slider" oninput="setSpeed(parseFloat(this.value))">
+        <span class="speed-val" id="speed-val">1&times;</span>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle light/dark mode">
+        <span class="theme-icon" id="theme-icon">&#x2600;</span>
+        <span id="theme-label">Light</span>
+      </button>
+    </div>
+
+    <div class="sim-area" id="sim-area">
+
+
+        <!-- GCD Scene -->
+        <div class="scene active" id="scene-gcd">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="gcdRun()">&#9654; Run Simulation</button>
+            <button class="btn btn-outline" onclick="gcdReset()">Reset</button>
+            <div class="slider-row" style="flex:1;min-width:180px">
+              <span>Tasks</span>
+              <input type="range" min="2" max="8" value="4" id="gcd-task-count" oninput="document.getElementById('gcd-tc-val').textContent=this.value">
+              <span class="slider-val" id="gcd-tc-val">4</span>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <strong>Serial queue</strong> executes one task at a time in order. <strong>Concurrent queue</strong> runs multiple tasks simultaneously on the thread pool. Watch how tasks flow differently through each.
+          </div>
+
+          <div class="section-heading">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--main);display:inline-block"></span>
+            Serial Queue — tasks execute one-by-one
+          </div>
+          <div class="thread-container">
+            <div class="thread-header">
+              <div class="thread-name">
+                <span style="color:var(--main)">●</span> DispatchQueue(label: "serial", attributes: .serial)
+              </div>
+              <span class="status-pill" id="serial-status" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">idle</span>
+            </div>
+            <div class="thread-track" id="serial-track">
+              <span style="color:var(--text3);font-size:12px;font-family:var(--mono)">// waiting...</span>
+            </div>
+            <div style="padding:6px 16px 12px">
+              <div class="progress-bar"><div class="progress-fill" id="serial-progress" style="width:0%;background:var(--main)"></div></div>
+            </div>
+          </div>
+
+          <div class="section-heading">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--teal);display:inline-block"></span>
+            Concurrent Queue — tasks run in parallel
+          </div>
+          <div class="thread-container">
+            <div class="thread-header">
+              <div class="thread-name">
+                <span style="color:var(--teal)">●</span> DispatchQueue.global(qos: .userInitiated)
+              </div>
+              <span class="status-pill" id="concurrent-status" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">idle</span>
+            </div>
+            <div class="thread-track" id="concurrent-track" style="flex-wrap:wrap;gap:6px;min-height:80px">
+              <span style="color:var(--text3);font-size:12px;font-family:var(--mono)">// waiting...</span>
+            </div>
+          </div>
+
+          
+          <div class="timeline-panel" id="tl-panel-gcd">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-gcd">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-gcd">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header">
+              <span class="log-title">Console Output</span>
+              <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="clearLog('gcd-log')">Clear</button>
+            </div>
+            <div class="log-body" id="gcd-log"></div>
+          </div>
+        </div>
+
+        <!-- Main Thread Scene -->
+        <div class="scene" id="scene-mainthread">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="mainThreadDemo('correct')">&#9654; Correct pattern</button>
+            <button class="btn btn-danger" onclick="mainThreadDemo('wrong')">&#9888; UI off main thread</button>
+            <button class="btn btn-outline" onclick="mainThreadReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            UIKit and SwiftUI are <strong>not thread-safe</strong>. All UI updates must happen on the Main Thread. Updating UI from a background thread causes visual glitches, crashes, or silent data corruption.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <div class="section-heading">Main Thread</div>
+              <div class="thread-container">
+                <div class="thread-header">
+                  <div class="thread-name"><span style="color:var(--teal)">●</span> Thread.main</div>
+                  <span class="status-pill" id="main-status" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,.2)">running</span>
+                </div>
+                <div class="thread-track" id="main-track" style="min-height:100px;flex-direction:column;align-items:flex-start;gap:6px">
+                  <div class="task-block" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,.2)">
+                    <div class="task-dot" style="background:var(--teal)"></div>RunLoop.main
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="section-heading">Background Thread</div>
+              <div class="thread-container">
+                <div class="thread-header">
+                  <div class="thread-name"><span style="color:var(--text3)">●</span> Thread (bg)</div>
+                  <span class="status-pill" id="bg-status" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">idle</span>
+                </div>
+                <div class="thread-track" id="bg-track" style="min-height:100px;flex-direction:column;align-items:flex-start;gap:6px">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="main-warning-area"></div>
+
+          
+          <div class="timeline-panel" id="tl-panel-mainthread">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-mainthread">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-mainthread">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="main-log"></div>
+          </div>
+        </div>
+
+        <!-- QoS Scene -->
+        <div class="scene" id="scene-qos">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="qosRun()">&#9654; Dispatch All QoS Tasks</button>
+            <button class="btn btn-outline" onclick="qosReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            QoS (Quality of Service) tells the system how urgent your work is. Higher QoS gets more CPU time. Watch how tasks with different priorities complete at different speeds.
+          </div>
+
+          <div id="qos-lanes" style="display:flex;flex-direction:column;gap:8px"></div>
+
+          
+          <div class="timeline-panel" id="tl-panel-qos">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-qos">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-qos">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="qos-log"></div>
+          </div>
+        </div>
+
+        <!-- Deadlock Scene -->
+        <div class="scene" id="scene-deadlock">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="deadlockDemo()">&#9888; Trigger Deadlock</button>
+            <button class="btn btn-primary" onclick="deadlockFix()">&#9654; Show Fix</button>
+            <button class="btn btn-outline" onclick="deadlockReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            A deadlock occurs when Thread A waits for Thread B, and Thread B waits for Thread A — both block forever. The most common iOS deadlock: calling <code style="font-family:var(--mono);font-size:11px">DispatchQueue.main.sync</code> <em>from</em> the main thread.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <div class="section-heading" style="color:var(--red)">Main Thread</div>
+              <div class="thread-container" id="dl-main-container">
+                <div class="thread-header">
+                  <div class="thread-name"><span id="dl-main-dot" style="color:var(--teal)">●</span> Thread.main</div>
+                  <span class="status-pill" id="dl-main-status" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,.2)">running</span>
+                </div>
+                <div class="thread-track" id="dl-main-track" style="min-height:100px;flex-direction:column;align-items:flex-start">
+                  <div class="task-block" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,.2)">
+                    <div class="task-dot" style="background:var(--teal)"></div>RunLoop.main
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="section-heading" style="color:var(--red)">Blocked State</div>
+              <div class="thread-container" id="dl-lock-container">
+                <div class="thread-header">
+                  <div class="thread-name"><span style="color:var(--red)">●</span> sync { } waiting</div>
+                  <span class="status-pill" id="dl-lock-status" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">idle</span>
+                </div>
+                <div class="thread-track" id="dl-lock-track" style="min-height:100px;flex-direction:column;align-items:flex-start">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="deadlock-warning-area"></div>
+
+          
+          <div class="timeline-panel" id="tl-panel-deadlock">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-deadlock">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-deadlock">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="deadlock-log"></div>
+          </div>
+        </div>
+
+        <!-- Data Race Scene -->
+        <div class="scene" id="scene-race">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="raceDemo()">&#9888; Trigger Data Race</button>
+            <button class="btn btn-primary" onclick="raceFix()">&#9654; Show Fix (Serial Queue)</button>
+            <button class="btn btn-outline" onclick="raceReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            A data race happens when multiple threads read and write the same memory simultaneously without synchronization. The result is <strong>undefined behavior</strong> — you may get wrong values, crashes, or non-reproducible bugs.
+          </div>
+
+          <div class="actor-box">
+            <div class="actor-title">
+              <span style="color:var(--amber)">var</span>
+              <span style="color:var(--text)">counter: Int = 0</span>
+              <span class="sendable-check" id="race-safe-badge" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(240,92,92,0.3)">&#9888; Not thread-safe</span>
+            </div>
+            <div style="font-size:26px;font-family:var(--mono);font-weight:700;color:var(--text);text-align:center;padding:16px 0" id="race-counter">0</div>
+            <div style="text-align:center;font-size:11px;color:var(--text3);margin-bottom:8px" id="race-expected">Expected: 0</div>
+            <div class="progress-bar" style="margin-bottom:0"><div class="progress-fill" id="race-progress" style="width:0%;background:var(--amber)"></div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="race-threads">
+          </div>
+
+          
+          <div class="timeline-panel" id="tl-panel-race">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-race">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-race">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="race-log"></div>
+          </div>
+        </div>
+
+        <!-- Thread Explosion Scene -->
+        <div class="scene" id="scene-explosion">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="explosionDemo()">&#9888; Create Thread Explosion</button>
+            <button class="btn btn-primary" onclick="explosionFix()">&#9654; Show Fix (async)</button>
+            <button class="btn btn-outline" onclick="explosionReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            Calling <code style="font-family:var(--mono);font-size:11px">.sync</code> on a concurrent queue from within a concurrent task blocks a thread, forcing GCD to spawn a new thread to compensate. This cascades into hundreds of threads — exhausting system resources.
+          </div>
+
+          <div class="section-heading">Active Threads</div>
+          <div id="explosion-grid" style="display:flex;flex-wrap:wrap;gap:5px;min-height:80px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;align-content:flex-start"></div>
+          <div style="font-size:12px;color:var(--text2);margin-top:6px">Thread count: <span style="font-family:var(--mono);color:var(--amber);font-weight:600" id="thread-count">0</span> / 64 (system limit)</div>
+          <div class="progress-bar"><div class="progress-fill" id="explosion-bar" style="width:0%;background:var(--amber)"></div></div>
+
+          <div id="explosion-warning-area"></div>
+
+          
+          <div class="timeline-panel" id="tl-panel-explosion">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-explosion">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-explosion">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="explosion-log"></div>
+          </div>
+        </div>
+
+        <!-- Barrier Scene -->
+        <div class="scene" id="scene-barrier">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="barrierRun()">&#9654; Run Reader-Writer</button>
+            <button class="btn btn-outline" onclick="barrierReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            <strong>Dispatch barrier</strong> lets you safely use a concurrent queue for reads (parallel) while ensuring writes are exclusive. Readers run simultaneously; a barrier write waits for all readers, then runs alone.
+          </div>
+
+          <div class="section-heading">Concurrent Queue with Barrier</div>
+          <div class="thread-container">
+            <div class="thread-header">
+              <div class="thread-name"><span style="color:var(--purple)">●</span> DispatchQueue(label: "rw", attributes: .concurrent)</div>
+            </div>
+            <div id="barrier-track" style="padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-height:120px"></div>
+          </div>
+
+          
+          <div class="timeline-panel" id="tl-panel-barrier">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-barrier">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-barrier">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="barrier-log"></div>
+          </div>
+        </div>
+
+        <!-- Actor Scene -->
+        <div class="scene" id="scene-actor">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="actorRun()">&#9654; Send Concurrent Requests</button>
+            <button class="btn btn-outline" onclick="actorReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            Swift <code style="font-family:var(--mono);font-size:11px">actor</code> automatically serializes all access to its state. Concurrent callers queue up — one at a time enters the actor, ensuring no data races, enforced at compile time.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <div class="section-heading">Without actor (❌ race)</div>
+              <div class="actor-box" id="unsafe-counter-box">
+                <div class="actor-title" style="color:var(--red)">class UnsafeCounter</div>
+                <div style="font-size:13px;font-family:var(--mono);color:var(--text2);margin-bottom:8px">var count = <span id="unsafe-count">0</span></div>
+                <div id="unsafe-callers" class="actor-queue"></div>
+              </div>
+            </div>
+            <div>
+              <div class="section-heading">With actor (✓ safe)</div>
+              <div class="actor-box" id="safe-counter-box">
+                <div class="actor-title" style="color:var(--teal)">actor SafeCounter</div>
+                <div style="font-size:13px;font-family:var(--mono);color:var(--text2);margin-bottom:8px">var count = <span id="safe-count">0</span></div>
+                <div id="safe-callers" class="actor-queue"></div>
+              </div>
+            </div>
+          </div>
+
+          
+          <div class="timeline-panel" id="tl-panel-actor">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-actor">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-actor">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="actor-log"></div>
+          </div>
+        </div>
+
+        <!-- Serial Isolation Scene -->
+        <div class="scene" id="scene-serial">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="serialDemo('unsafe')">&#9888; Concurrent (unsafe)</button>
+            <button class="btn btn-primary" onclick="serialDemo('safe')">&#9654; Serial isolation (safe)</button>
+            <button class="btn btn-outline" onclick="serialReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            A <strong>private serial queue</strong> as a mutex: all access to shared state funnels through one queue, so no two operations can overlap. Simple and effective — no locks needed.
+          </div>
+
+          <div class="actor-box">
+            <div class="actor-title"><span style="color:var(--green)">var</span> sharedData: [String] = []</div>
+            <div id="serial-data-display" style="display:flex;flex-wrap:wrap;gap:4px;min-height:40px;margin-bottom:8px"></div>
+            <div style="font-size:11.5px;color:var(--text2);font-family:var(--mono)">count: <span id="serial-count" style="color:var(--green)">0</span></div>
+          </div>
+
+          <div id="serial-writer-threads" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"></div>
+
+          
+          <div class="timeline-panel" id="tl-panel-serial">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-serial">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-serial">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="serial-log"></div>
+          </div>
+        </div>
+
+        <!-- async/await Scene -->
+        <div class="scene" id="scene-asyncawait">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="asyncRun()">&#9654; Run async/await Flow</button>
+            <button class="btn btn-outline" onclick="asyncReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            <code style="font-family:var(--mono);font-size:11px">async/await</code> uses a <strong>cooperative thread pool</strong> — tasks suspend at <code style="font-family:var(--mono);font-size:11px">await</code> without blocking a thread. The thread is freed for other work while waiting. <code style="font-family:var(--mono);font-size:11px">@MainActor</code> guarantees UI hops automatically.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <div class="section-heading">Cooperative Thread Pool</div>
+              <div class="thread-container">
+                <div class="thread-header">
+                  <div class="thread-name"><span style="color:var(--main)">●</span> Swift Concurrency Pool</div>
+                </div>
+                <div id="async-pool" style="padding:12px 16px;display:flex;flex-direction:column;gap:6px;min-height:120px"></div>
+              </div>
+            </div>
+            <div>
+              <div class="section-heading" style="color:var(--teal)">@MainActor</div>
+              <div class="thread-container">
+                <div class="thread-header">
+                  <div class="thread-name"><span style="color:var(--teal)">●</span> Main Thread</div>
+                </div>
+                <div id="async-main" style="padding:12px 16px;display:flex;flex-direction:column;gap:6px;min-height:120px">
+                  <div class="task-block" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,.2)">
+                    <div class="task-dot" style="background:var(--teal)"></div>UI idle — ready
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          
+          <div class="timeline-panel" id="tl-panel-asyncawait">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-asyncawait">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-asyncawait">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="async-log"></div>
+          </div>
+        </div>
+
+        <!-- Combine Scene -->
+        <div class="scene" id="scene-combine">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="combineRun()">&#9654; Trigger Publisher</button>
+            <button class="btn btn-danger" onclick="combineBadRun()">&#9888; Without receive(on:)</button>
+            <button class="btn btn-outline" onclick="combineReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            In Combine, <code style="font-family:var(--mono);font-size:11px">subscribe(on:)</code> sets where upstream work runs. <code style="font-family:var(--mono);font-size:11px">receive(on:)</code> sets where values are <em>delivered</em>. Always add <code style="font-family:var(--mono);font-size:11px">.receive(on: DispatchQueue.main)</code> before touching UI in your sink.
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="section-heading">Pipeline flow</div>
+            <div id="combine-pipeline" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;min-height:60px"></div>
+            <div style="font-size:11.5px;color:var(--text3);font-family:var(--mono)" id="combine-thread-label">// thread: —</div>
+          </div>
+
+          
+          <div class="timeline-panel" id="tl-panel-combine">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-combine">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-combine">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="combine-log"></div>
+          </div>
+        </div>
+
+        <!-- Actor Reentrancy Scene -->
+        <div class="scene" id="scene-reentrancy">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="reentrancyDemo()">&#9888; Trigger Reentrancy Bug</button>
+            <button class="btn btn-primary" onclick="reentrancyFix()">&#9654; Show Fix</button>
+            <button class="btn btn-outline" onclick="reentrancyReset()">Reset</button>
+          </div>
+
+          <div class="info-card">
+            When an actor <code style="font-family:var(--mono);font-size:11px">await</code>s something, it <em>suspends</em> and lets other tasks in. Those tasks can mutate actor state before the original resumes — invalidating assumptions the first task made before suspending.
+          </div>
+
+          <div class="actor-box">
+            <div class="actor-title"><span style="color:var(--purple)">actor</span> Cache</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">
+              <div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:var(--mono)">var data: String?</div>
+                <div id="reent-cache-value" style="font-size:13px;font-family:var(--mono);padding:8px 12px;background:var(--bg4);border-radius:6px;color:var(--text2)">nil</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:var(--mono)">var isLoading: Bool</div>
+                <div id="reent-loading-value" style="font-size:13px;font-family:var(--mono);padding:8px 12px;background:var(--bg4);border-radius:6px;color:var(--text2)">false</div>
+              </div>
+            </div>
+            <div id="reent-tasks" class="actor-queue" style="margin-top:12px"></div>
+          </div>
+
+          <div id="reent-warning-area"></div>
+
+          
+          <div class="timeline-panel" id="tl-panel-reentrancy">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                <div class="timeline-title-dot"></div>
+                Timeline
+              </div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-reentrancy">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-reentrancy">
+              <div class="tl-empty">Run a simulation to see the timeline</div>
+            </div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="reent-log"></div>
+          </div>
+        </div>
+
+        <!-- DispatchGroup Scene -->
+        <div class="scene" id="scene-dispatchgroup">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="dgRun()">&#9654; Load Dashboard</button>
+            <button class="btn btn-outline" onclick="dgReset()">Reset</button>
+          </div>
+          <div class="info-card">
+            <strong>Real world:</strong> A MyTelkomsel dashboard loads 4 API calls in parallel — user profile, balance, data quota, promo banners. <code style="font-family:var(--mono);font-size:11px">DispatchGroup</code> fires <code style="font-family:var(--mono);font-size:11px">notify</code> only after all 4 complete, then updates the UI at once.
+          </div>
+          <div class="section-heading">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--main);display:inline-block"></span>
+            Parallel API calls — notify when all done
+          </div>
+          <div id="dg-requests" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+          <div class="thread-container" id="dg-notify-container" style="display:none">
+            <div class="thread-header">
+              <div class="thread-name"><span style="color:var(--teal)">●</span> group.notify(queue: .main)</div>
+              <span class="status-pill" id="dg-notify-status" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">waiting</span>
+            </div>
+            <div class="thread-track" id="dg-notify-track" style="min-height:50px"></div>
+          </div>
+          <div class="timeline-panel" id="tl-panel-dispatchgroup">
+            <div class="timeline-header">
+              <div class="timeline-title"><div class="timeline-title-dot"></div>Timeline</div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-dispatchgroup">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-dispatchgroup"><div class="tl-empty">Run a simulation to see the timeline</div></div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="dg-log"></div>
+          </div>
+        </div>
+
+        <!-- DispatchSemaphore Scene -->
+        <div class="scene" id="scene-semaphore">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="semRun()">&#9654; Simulate Upload Queue</button>
+            <button class="btn btn-outline" onclick="semReset()">Reset</button>
+            <div class="slider-row" style="flex:1;min-width:180px">
+              <span>Max concurrent</span>
+              <input type="range" min="1" max="5" value="2" id="sem-limit" oninput="document.getElementById('sem-limit-val').textContent=this.value">
+              <span class="slider-val" id="sem-limit-val">2</span>
+            </div>
+          </div>
+          <div class="info-card">
+            <strong>Real world:</strong> Upload 8 photos to a CDN but limit to N concurrent uploads to avoid network saturation. A <code style="font-family:var(--mono);font-size:11px">DispatchSemaphore(value: N)</code> acts as a token bucket — each upload acquires a token, releases when done.
+          </div>
+          <div class="section-heading">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);display:inline-block"></span>
+            Upload queue — max concurrent slots
+          </div>
+          <div id="sem-uploads" style="display:flex;flex-direction:column;gap:6px"></div>
+          <div style="margin-top:8px;font-size:12px;color:var(--text2)">Active slots: <span style="font-family:var(--mono);color:var(--purple);font-weight:600" id="sem-active">0</span> / <span id="sem-max-label">2</span></div>
+          <div class="progress-bar"><div class="progress-fill" id="sem-active-bar" style="width:0%;background:var(--purple)"></div></div>
+          <div class="timeline-panel" id="tl-panel-semaphore">
+            <div class="timeline-header">
+              <div class="timeline-title"><div class="timeline-title-dot"></div>Timeline</div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-semaphore">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-semaphore"><div class="tl-empty">Run a simulation to see the timeline</div></div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="sem-log"></div>
+          </div>
+        </div>
+
+        <!-- TaskGroup Scene -->
+        <div class="scene" id="scene-taskgroup">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="tgRun()">&#9654; Fetch All Localization Keys</button>
+            <button class="btn btn-outline" onclick="tgReset()">Reset</button>
+          </div>
+          <div class="info-card">
+            <strong>Real world:</strong> TelkomselLocalization SDK needs to fetch 6 language bundles in parallel, then merge all results. <code style="font-family:var(--mono);font-size:11px">withTaskGroup</code> spawns child tasks concurrently; the for-await loop collects all results, and cancellation propagates automatically if one fails.
+          </div>
+          <div class="section-heading">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--teal);display:inline-block"></span>
+            Parallel child tasks — collect &amp; merge
+          </div>
+          <div id="tg-tasks" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"></div>
+          <div class="actor-box" style="margin-top:4px">
+            <div class="actor-title"><span style="color:var(--teal)">merged result</span></div>
+            <div id="tg-result" style="display:flex;flex-wrap:wrap;gap:5px;min-height:30px"></div>
+          </div>
+          <div class="timeline-panel" id="tl-panel-taskgroup">
+            <div class="timeline-header">
+              <div class="timeline-title"><div class="timeline-title-dot"></div>Timeline</div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-taskgroup">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-taskgroup"><div class="tl-empty">Run a simulation to see the timeline</div></div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="tg-log"></div>
+          </div>
+        </div>
+
+        <!-- Task Cancellation Scene -->
+        <div class="scene" id="scene-taskcancellation">
+          <div class="controls">
+            <button class="btn btn-primary" onclick="tcRun()">&#9654; Start Search</button>
+            <button class="btn btn-danger" onclick="tcCancel()">&#9646;&#9646; Cancel (user navigates away)</button>
+            <button class="btn btn-outline" onclick="tcReset()">Reset</button>
+          </div>
+          <div class="info-card">
+            <strong>Real world:</strong> User types in a search box, triggering an API call. They navigate away before results arrive. The in-flight <code style="font-family:var(--mono);font-size:11px">Task</code> must be cancelled to avoid updating a deallocated screen. Watch <code style="font-family:var(--mono);font-size:11px">Task.isCancelled</code> checkpoints stop work early.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <div class="section-heading">Task state</div>
+              <div class="actor-box">
+                <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">searchTask: Task&lt;Void, Never&gt;</div>
+                <div id="tc-state" style="font-size:22px;font-family:var(--mono);font-weight:700;color:var(--teal);text-align:center;padding:12px 0">idle</div>
+                <div style="font-size:11.5px;color:var(--text2);font-family:var(--mono);margin-top:4px;text-align:center" id="tc-checkpoint">—</div>
+              </div>
+            </div>
+            <div>
+              <div class="section-heading">Checkpoints</div>
+              <div id="tc-steps" style="display:flex;flex-direction:column;gap:5px"></div>
+            </div>
+          </div>
+          <div class="timeline-panel" id="tl-panel-taskcancellation">
+            <div class="timeline-header">
+              <div class="timeline-title"><div class="timeline-title-dot"></div>Timeline</div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-taskcancellation">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-taskcancellation"><div class="tl-empty">Run a simulation to see the timeline</div></div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="tc-log"></div>
+          </div>
+        </div>
+
+        <!-- NSLock / os_unfair_lock Scene -->
+        <div class="scene" id="scene-locks">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="lockDemo('nolock')">&#9888; No lock (crash)</button>
+            <button class="btn btn-primary" onclick="lockDemo('nslock')">&#9654; NSLock</button>
+            <button class="btn btn-primary" onclick="lockDemo('unfair')">&#9654; os_unfair_lock</button>
+            <button class="btn btn-outline" onclick="lockReset()">Reset</button>
+          </div>
+          <div class="info-card">
+            <strong>Real world:</strong> An SDK analytics buffer collects events from multiple threads. Without a lock, simultaneous writes corrupt the array. <code style="font-family:var(--mono);font-size:11px">NSLock</code> is simple and safe; <code style="font-family:var(--mono);font-size:11px">os_unfair_lock</code> is faster but requires careful use.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div>
+              <div class="section-heading">Writer threads</div>
+              <div id="lock-writers" style="display:flex;flex-direction:column;gap:5px"></div>
+            </div>
+            <div>
+              <div class="section-heading">Lock state</div>
+              <div class="actor-box" id="lock-state-box">
+                <div id="lock-state-icon" style="font-size:28px;text-align:center;padding:8px 0">🔓</div>
+                <div id="lock-state-label" style="text-align:center;font-family:var(--mono);font-size:12px;color:var(--text2)">unlocked</div>
+              </div>
+            </div>
+            <div>
+              <div class="section-heading">Buffer</div>
+              <div class="actor-box">
+                <div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:6px">analyticsEvents: [Event]</div>
+                <div id="lock-buffer" style="display:flex;flex-wrap:wrap;gap:4px;min-height:40px"></div>
+                <div style="margin-top:6px;font-size:11px;font-family:var(--mono);color:var(--text2)">count: <span id="lock-count" style="color:var(--green)">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div id="lock-warning-area"></div>
+          <div class="timeline-panel" id="tl-panel-locks">
+            <div class="timeline-header">
+              <div class="timeline-title"><div class="timeline-title-dot"></div>Timeline</div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-locks">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-locks"><div class="tl-empty">Run a simulation to see the timeline</div></div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="lock-log"></div>
+          </div>
+        </div>
+
+        <!-- @Atomic Property Scene -->
+        <div class="scene" id="scene-atomic">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="atomicDemo('raw')">&#9888; Non-atomic (unsafe)</button>
+            <button class="btn btn-primary" onclick="atomicDemo('atomic')">&#9654; @Atomic wrapper</button>
+            <button class="btn btn-outline" onclick="atomicReset()">Reset</button>
+          </div>
+          <div class="info-card">
+            <strong>Real world:</strong> A localization SDK tracks an active request count (<code style="font-family:var(--mono);font-size:11px">pendingRequests</code>) incremented by network callbacks on multiple threads. A custom <code style="font-family:var(--mono);font-size:11px">@Atomic</code> property wrapper protects it with a private serial queue.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div class="section-heading" style="color:var(--red)">Raw var (not atomic)</div>
+              <div class="actor-box">
+                <div style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:8px">var pendingRequests = 0</div>
+                <div id="raw-val" style="font-size:28px;font-family:var(--mono);font-weight:700;color:var(--text);text-align:center;padding:8px 0">0</div>
+                <div style="font-size:11px;text-align:center;color:var(--text3);font-family:var(--mono)" id="raw-expected">expected: 0</div>
+              </div>
+            </div>
+            <div>
+              <div class="section-heading" style="color:var(--green)">@Atomic var (safe)</div>
+              <div class="actor-box">
+                <div style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:8px">@Atomic var pendingRequests = 0</div>
+                <div id="atomic-val" style="font-size:28px;font-family:var(--mono);font-weight:700;color:var(--teal);text-align:center;padding:8px 0">0</div>
+                <div style="font-size:11px;text-align:center;color:var(--text3);font-family:var(--mono)" id="atomic-expected">expected: 0</div>
+              </div>
+            </div>
+          </div>
+          <div id="atomic-threads" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:4px"></div>
+          <div class="timeline-panel" id="tl-panel-atomic">
+            <div class="timeline-header">
+              <div class="timeline-title"><div class="timeline-title-dot"></div>Timeline</div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-atomic">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-atomic"><div class="tl-empty">Run a simulation to see the timeline</div></div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="atomic-log"></div>
+          </div>
+        </div>
+
+        <!-- Sendable Scene -->
+        <div class="scene" id="scene-sendable">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="sendableDemo('bad')">&#9888; Non-Sendable across boundary</button>
+            <button class="btn btn-primary" onclick="sendableDemo('good')">&#9654; Sendable types</button>
+            <button class="btn btn-outline" onclick="sendableReset()">Reset</button>
+          </div>
+          <div class="info-card">
+            <strong>Real world:</strong> Passing a mutable SDK config object across an actor boundary. Non-<code style="font-family:var(--mono);font-size:11px">Sendable</code> reference types can be mutated from two actors simultaneously. The fix: use <code style="font-family:var(--mono);font-size:11px">struct</code> (value type, implicitly Sendable) or <code style="font-family:var(--mono);font-size:11px">final class</code> with all-immutable state.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div class="section-heading" style="color:var(--red)">class Config (mutable ref)</div>
+              <div class="actor-box" id="sendable-bad-box">
+                <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:8px">class SDKConfig { var timeout = 30 }</div>
+                <div id="sendable-bad-state" style="font-size:12px;font-family:var(--mono);color:var(--text2);line-height:1.8"></div>
+              </div>
+            </div>
+            <div>
+              <div class="section-heading" style="color:var(--green)">struct Config (value type)</div>
+              <div class="actor-box" id="sendable-good-box">
+                <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:8px">struct SDKConfig: Sendable { let timeout: Int }</div>
+                <div id="sendable-good-state" style="font-size:12px;font-family:var(--mono);color:var(--text2);line-height:1.8"></div>
+              </div>
+            </div>
+          </div>
+          <div id="sendable-warning-area"></div>
+          <div class="timeline-panel" id="tl-panel-sendable">
+            <div class="timeline-header">
+              <div class="timeline-title"><div class="timeline-title-dot"></div>Timeline</div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-sendable">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-sendable"><div class="tl-empty">Run a simulation to see the timeline</div></div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="sendable-log"></div>
+          </div>
+        </div>
+
+        <!-- Priority Inversion Scene -->
+        <div class="scene" id="scene-priorityinversion">
+          <div class="controls">
+            <button class="btn btn-danger" onclick="piRun()">&#9888; Trigger Priority Inversion</button>
+            <button class="btn btn-primary" onclick="piFix()">&#9654; With QoS Propagation fix</button>
+            <button class="btn btn-outline" onclick="piReset()">Reset</button>
+          </div>
+          <div class="info-card">
+            <strong>Real world:</strong> A background sync task holds a lock that a userInteractive animation task needs. The high-priority task stalls — causing a frame drop. The OS QoS propagation temporarily boosts the low-priority task to unblock the higher one.
+          </div>
+          <div id="pi-threads" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div id="pi-warning-area"></div>
+          <div class="timeline-panel" id="tl-panel-priorityinversion">
+            <div class="timeline-header">
+              <div class="timeline-title"><div class="timeline-title-dot"></div>Timeline</div>
+              <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tl-dur-priorityinversion">— ms</span>
+            </div>
+            <div class="timeline-body" id="tl-body-priorityinversion"><div class="tl-empty">Run a simulation to see the timeline</div></div>
+          </div>
+          <div class="log-panel">
+            <div class="log-header"><span class="log-title">Console Output</span></div>
+            <div class="log-body" id="pi-log"></div>
+          </div>
+        </div>
+
+    </div><!-- /sim-area -->
+
+  </div><!-- /center-col -->
+
+  <!-- ═══ CODE PANEL ═══ -->
+  <div class="code-panel">
+    <div class="code-panel-header">
+      <span style="width:7px;height:7px;background:var(--main);border-radius:50%;display:inline-block;flex-shrink:0"></span>
+      Swift Code
+    </div>
+    <div class="code-scroll" id="code-display">
+      <pre id="code-content"></pre>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+
+// ── Speed & Timeline Engine ───────────────────────────────────────────────
+
+let simSpeed = 1;         // multiplier: 0.25 = slow, 4 = fast
+let tlEvents = [];        // [{lane, label, startMs, endMs, color, dimColor}]
+let tlStartTime = null;
+let tlAnimFrame = null;
+let tlDuration = 0;
+const TL_TOTAL_MS = 3000; // logical timeline width in ms
+
+function setSpeed(v) {
+  simSpeed = v;
+  document.getElementById('speed-val').textContent = v + '×';
+}
+
+function scaled(ms) {
+  // ms = logical time → actual setTimeout delay accounting for speed
+  return Math.round(ms / simSpeed);
+}
+
+// Timeline event recording
+function tlClear(sceneId) {
+  tlEvents = [];
+  tlStartTime = performance.now();
+  tlDuration = 0;
+  if (tlAnimFrame) cancelAnimationFrame(tlAnimFrame);
+  const body = document.getElementById('tl-body-' + sceneId);
+  if (body) body.innerHTML = '<div class="tl-empty">Simulation running…</div>';
+  const dur = document.getElementById('tl-dur-' + sceneId);
+  if (dur) dur.textContent = '— ms';
+}
+
+function tlRecord(lane, label, color, dimColor) {
+  // Returns a function to call when the event ends
+  const startMs = performance.now() - tlStartTime;
+  const ev = { lane, label, color, dimColor, startMs, endMs: null };
+  tlEvents.push(ev);
+  return function() { ev.endMs = performance.now() - tlStartTime; };
+}
+
+function tlRender(sceneId) {
+  const body = document.getElementById('tl-body-' + sceneId);
+  const durEl = document.getElementById('tl-dur-' + sceneId);
+  if (!body) return;
+
+  const now = performance.now() - tlStartTime;
+  const lanes = [...new Set(tlEvents.map(e => e.lane))];
+  if (lanes.length === 0) return;
+
+  const totalMs = Math.max(TL_TOTAL_MS, now + 200);
+  if (durEl) durEl.textContent = Math.round(now) + ' ms';
+
+  // ── Ruler ──
+  const ticks = 5;
+  let html = '<div class="tl-ruler">';
+  for (let i = 1; i <= ticks; i++) {
+    html += `<div class="tl-tick">${Math.round(totalMs / ticks * i)}ms</div>`;
+  }
+  html += '</div>';
+
+  // ── Playhead position (percentage of track width) ──
+  const phPct = Math.min((now / totalMs) * 100, 99.8);
+
+  // ── Canvas wrapper (playhead is absolute inside this) ──
+  html += '<div class="tl-canvas" id="tl-canvas-' + sceneId + '">';
+
+  // Playhead spans the full track area only (not the label column).
+  // We offset it by the 116px label width using calc.
+  html += `<div class="tl-playhead" style="left:calc(116px + ${phPct.toFixed(2)}% * (100% - 116px) / 100)"></div>`;
+
+  lanes.forEach(lane => {
+    const events = tlEvents.filter(e => e.lane === lane);
+
+    // ── Sub-row packing: greedy interval scheduler ──
+    // Each event is placed on the first sub-row where it doesn't overlap.
+    const subRows = []; // subRows[i] = array of events on row i
+    events.forEach(ev => {
+      const evEnd = ev.endMs != null ? ev.endMs : now + 50;
+      let placed = false;
+      for (let r = 0; r < subRows.length; r++) {
+        const rowEvents = subRows[r];
+        const lastInRow = rowEvents[rowEvents.length - 1];
+        const lastEnd = lastInRow.endMs != null ? lastInRow.endMs : now + 50;
+        // 10ms minimum gap between blocks in the same sub-row
+        if (ev.startMs >= lastEnd - 10) {
+          rowEvents.push(ev);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) subRows.push([ev]);
+    });
+
+    html += `<div class="tl-lane">`;
+    html += `<div class="tl-label" title="${lane}">${lane}</div>`;
+    html += `<div class="tl-rows">`;
+
+    subRows.forEach(rowEvents => {
+      html += `<div class="tl-track">`;
+      rowEvents.forEach(ev => {
+        const left  = (ev.startMs / totalMs) * 100;
+        const evEnd = ev.endMs != null ? ev.endMs : now;
+        const rawW  = ((evEnd / totalMs) * 100) - left;
+        const w     = Math.max(rawW, 0.8);   // min visible width
+        const alpha = ev.endMs == null ? '0.92' : '0.62';
+        // Derive a solid text color from the accent: strip rgba/var and use the raw color
+        // For var(--xxx) colors we use a CSS variable text approach
+        const isVar = ev.color.startsWith('var(');
+        const blockStyle = [
+          `left:${left.toFixed(2)}%`,
+          `width:${w.toFixed(2)}%`,
+          `background:${ev.dimColor}`,
+          `border:1px solid ${ev.color}`,
+          `color:${ev.color}`,
+          `opacity:${alpha}`,
+        ].join(';');
+        const tooltip = `${ev.label} (${Math.round(ev.startMs)}–${ev.endMs != null ? Math.round(ev.endMs) : '…'}ms)`;
+        // Only show text label when block is wide enough (>3% of total)
+        const showText = w > 2.5;
+        html += `<div class="tl-block" style="${blockStyle}" title="${tooltip}">${showText ? ev.label : ''}</div>`;
+      });
+      html += `</div>`; // tl-track
+    });
+
+    html += `</div>`; // tl-rows
+    html += `</div>`; // tl-lane
+  });
+
+  html += '</div>'; // tl-canvas
+  body.innerHTML = html;
+}
+
+function tlAnimate(sceneId, stopAfterMs) {
+  if (tlAnimFrame) cancelAnimationFrame(tlAnimFrame);
+  function frame() {
+    tlRender(sceneId);
+    const elapsed = performance.now() - tlStartTime;
+    if (elapsed < (stopAfterMs || 6000)) {
+      tlAnimFrame = requestAnimationFrame(frame);
+    } else {
+      tlRender(sceneId); // final render
+      const durEl = document.getElementById('tl-dur-' + sceneId);
+      if (durEl) durEl.textContent = Math.round(elapsed) + ' ms total';
+    }
+  }
+  tlAnimFrame = requestAnimationFrame(frame);
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+
+let timers = [];
+function later(fn, ms) { const t = setTimeout(fn, scaled(ms)); timers.push(t); return t; }
+function clearAllTimers() { timers.forEach(clearTimeout); timers = []; if (tlAnimFrame) cancelAnimationFrame(tlAnimFrame); }
+
+function log(id, msg, type='', thread='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const t = new Date().toISOString().slice(14,23);
+  const threadColors = {'main':'var(--teal)','bg':'var(--text3)','bg1':'var(--main)','bg2':'var(--purple)','bg3':'var(--amber)','actor':'var(--teal)'};
+  const col = threadColors[thread] || 'var(--text3)';
+  const cls = type === 'warn' ? 'log-warn' : type === 'error' ? 'log-error' : type === 'ok' ? 'log-success' : 'log-msg';
+  const threadLabel = thread ? `<span class="log-thread" style="color:${col}">[${thread}]</span>` : '';
+  el.innerHTML += `<div class="log-entry"><span class="log-time">${t}</span>${threadLabel}<span class="${cls}">${msg}</span></div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLog(id) { document.getElementById(id).innerHTML = ''; }
+
+function makeTask(label, colorVar, dimVar, borderColor) {
+  const el = document.createElement('div');
+  el.className = 'task-block task-running';
+  el.style.cssText = `background:${dimVar};color:${colorVar};border:1px solid ${borderColor}`;
+  el.innerHTML = `<div class="task-dot" style="background:${colorVar}"></div>${label}`;
+  return el;
+}
+
+function pill(txt, bg, color) {
+  return `<span class="status-pill" style="background:${bg};color:${color};border:1px solid ${color}33">${txt}</span>`;
+}
+
+const CODES = {
+  gcd: `<span class="cm">// Serial queue — one task at a time</span>
+<span class="kw">let</span> serial = <span class="fn">DispatchQueue</span>(
+    label: <span class="str">"com.app.serial"</span>
+)
+
+serial.<span class="fn">async</span> { doWork(<span class="num">1</span>) }
+serial.<span class="fn">async</span> { doWork(<span class="num">2</span>) }
+serial.<span class="fn">async</span> { doWork(<span class="num">3</span>) }
+<span class="cm">// runs 1 → 2 → 3 in order</span>
+
+<span class="cm">// Concurrent queue — parallel tasks</span>
+<span class="kw">let</span> concurrent = <span class="fn">DispatchQueue</span>.global(
+    qos: .userInitiated
+)
+
+concurrent.<span class="fn">async</span> { doWork(<span class="num">1</span>) }
+concurrent.<span class="fn">async</span> { doWork(<span class="num">2</span>) }
+concurrent.<span class="fn">async</span> { doWork(<span class="num">3</span>) }
+<span class="cm">// runs 1, 2, 3 simultaneously</span>`,
+
+  mainthread: `<span class="cm">// CORRECT ✓</span>
+<span class="fn">DispatchQueue</span>.global().<span class="fn">async</span> {
+    <span class="kw">let</span> data = <span class="fn">fetchData</span>()
+    
+    <span class="fn">DispatchQueue</span>.main.<span class="fn">async</span> {
+        <span class="cm">// safe — on main thread</span>
+        <span class="kw">self</span>.label.text = data.title
+    }
+}
+
+<span class="cm">// WRONG ✗ — UI from background</span>
+<span class="fn">DispatchQueue</span>.global().<span class="fn">async</span> {
+    <span class="kw">let</span> data = <span class="fn">fetchData</span>()
+    <span class="cm">// updating UI here → CRASH</span>
+    <span class="kw">self</span>.label.text = data.title
+}
+
+<span class="cm">// MODERN — @MainActor</span>
+<span class="kw">@MainActor</span>
+<span class="kw">func</span> <span class="fn">updateUI</span>(_ data: Data) {
+    label.text = data.title <span class="cm">// safe</span>
+}`,
+
+  qos: `<span class="cm">// QoS from highest → lowest priority</span>
+
+<span class="fn">DispatchQueue</span>.global(qos: .userInteractive)
+    .<span class="fn">async</span> { <span class="cm">/* animations, direct interaction */</span> }
+
+<span class="fn">DispatchQueue</span>.global(qos: .userInitiated)
+    .<span class="fn">async</span> { <span class="cm">/* user triggered, awaiting result */</span> }
+
+<span class="fn">DispatchQueue</span>.global(qos: .default)
+    .<span class="fn">async</span> { <span class="cm">/* general work */</span> }
+
+<span class="fn">DispatchQueue</span>.global(qos: .utility)
+    .<span class="fn">async</span> { <span class="cm">/* long running, progress bar */</span> }
+
+<span class="fn">DispatchQueue</span>.global(qos: .background)
+    .<span class="fn">async</span> { <span class="cm">/* not time-sensitive, sync */</span> }`,
+
+  deadlock: `<span class="cm">// DEADLOCK ✗</span>
+<span class="cm">// On main thread, calling sync back to main</span>
+<span class="kw">override func</span> <span class="fn">viewDidLoad</span>() {
+    <span class="kw">super</span>.<span class="fn">viewDidLoad</span>()
+    
+    <span class="fn">DispatchQueue</span>.main.<span class="fn">sync</span> {
+        <span class="cm">// main waits for main → DEADLOCK</span>
+        label.text = <span class="str">"hello"</span>
+    }
+}
+
+<span class="cm">// FIX ✓ — always use async</span>
+<span class="fn">DispatchQueue</span>.main.<span class="fn">async</span> {
+    label.text = <span class="str">"hello"</span>
+}
+
+<span class="cm">// Or if already on main thread, just:</span>
+label.text = <span class="str">"hello"</span>`,
+
+  race: `<span class="cm">// DATA RACE ✗</span>
+<span class="kw">var</span> counter = <span class="num">0</span>
+
+<span class="fn">DispatchQueue</span>.global().<span class="fn">async</span> {
+    counter += <span class="num">1</span> <span class="cm">// race!</span>
+}
+<span class="fn">DispatchQueue</span>.global().<span class="fn">async</span> {
+    counter += <span class="num">1</span> <span class="cm">// race!</span>
+}
+
+<span class="cm">// FIX ✓ — serial queue isolation</span>
+<span class="kw">let</span> queue = <span class="fn">DispatchQueue</span>(
+    label: <span class="str">"com.app.counter"</span>
+)
+<span class="kw">var</span> counter = <span class="num">0</span>
+
+queue.<span class="fn">async</span> { counter += <span class="num">1</span> }
+queue.<span class="fn">async</span> { counter += <span class="num">1</span> }
+<span class="cm">// serialized — always correct</span>`,
+
+  explosion: `<span class="cm">// THREAD EXPLOSION ✗</span>
+<span class="kw">let</span> concurrent = <span class="fn">DispatchQueue</span>.global()
+
+<span class="cm">// Each sync blocks a thread →</span>
+<span class="cm">// GCD spawns new threads →</span>
+<span class="cm">// Cascades to 100s of threads!</span>
+<span class="kw">for</span> _ <span class="kw">in</span> <span class="num">0</span>..<<span class="num">100</span> {
+    concurrent.<span class="fn">async</span> {
+        concurrent.<span class="fn">sync</span> { work() }
+    }
+}
+
+<span class="cm">// FIX ✓ — use async, not sync</span>
+<span class="kw">for</span> _ <span class="kw">in</span> <span class="num">0</span>..<<span class="num">100</span> {
+    concurrent.<span class="fn">async</span> { work() }
+}
+
+<span class="cm">// Or with Swift Concurrency:</span>
+<span class="fn">Task</span> { <span class="kw">await</span> work() } <span class="cm">// no blocking</span>`,
+
+  barrier: `<span class="kw">let</span> rwQueue = <span class="fn">DispatchQueue</span>(
+    label: <span class="str">"com.app.rw"</span>,
+    attributes: .concurrent
+)
+<span class="kw">var</span> data: [<span class="type">String</span>] = []
+
+<span class="cm">// Multiple concurrent reads ✓</span>
+<span class="kw">func</span> <span class="fn">read</span>() -> [<span class="type">String</span>] {
+    rwQueue.<span class="fn">sync</span> { data }
+}
+
+<span class="cm">// Exclusive barrier write ✓</span>
+<span class="kw">func</span> <span class="fn">write</span>(_ value: <span class="type">String</span>) {
+    rwQueue.<span class="fn">async</span>(flags: .barrier) {
+        <span class="cm">// waits for readers, runs alone</span>
+        data.<span class="fn">append</span>(value)
+    }
+}`,
+
+  actor: `<span class="cm">// Without actor — data race ✗</span>
+<span class="kw">class</span> <span class="type">UnsafeCounter</span> {
+    <span class="kw">var</span> count = <span class="num">0</span>
+    <span class="kw">func</span> <span class="fn">increment</span>() { count += <span class="num">1</span> }
+}
+
+<span class="cm">// With actor — thread safe ✓</span>
+<span class="kw">actor</span> <span class="type">SafeCounter</span> {
+    <span class="kw">var</span> count = <span class="num">0</span>
+    <span class="kw">func</span> <span class="fn">increment</span>() { count += <span class="num">1</span> }
+}
+
+<span class="kw">let</span> counter = <span class="fn">SafeCounter</span>()
+
+<span class="cm">// Callers must await — serialized</span>
+<span class="fn">Task</span> { <span class="kw">await</span> counter.<span class="fn">increment</span>() }
+<span class="fn">Task</span> { <span class="kw">await</span> counter.<span class="fn">increment</span>() }`,
+
+  serial: `<span class="kw">class</span> <span class="type">SafeStore</span> {
+    <span class="kw">private var</span> data: [<span class="type">String</span>] = []
+    <span class="kw">private let</span> queue = <span class="fn">DispatchQueue</span>(
+        label: <span class="str">"com.store.serial"</span>
+    )
+    
+    <span class="kw">func</span> <span class="fn">append</span>(_ value: <span class="type">String</span>) {
+        queue.<span class="fn">async</span> {
+            <span class="kw">self</span>.data.<span class="fn">append</span>(value)
+        }
+    }
+    
+    <span class="kw">func</span> <span class="fn">read</span>() -> [<span class="type">String</span>] {
+        queue.<span class="fn">sync</span> { data }
+    }
+}`,
+
+  asyncawait: `<span class="cm">// Cooperative pool — no blocking</span>
+<span class="kw">func</span> <span class="fn">loadProfile</span>() <span class="kw">async</span> {
+    <span class="cm">// Suspends here — thread is freed</span>
+    <span class="kw">let</span> data = <span class="kw">await</span> <span class="fn">fetchFromAPI</span>()
+    
+    <span class="cm">// Resume on cooperative pool</span>
+    <span class="kw">let</span> parsed = <span class="fn">parse</span>(data)
+    
+    <span class="cm">// Hop to main for UI</span>
+    <span class="kw">await</span> MainActor.<span class="fn">run</span> {
+        label.text = parsed.name
+    }
+}
+
+<span class="cm">// Or annotate class as @MainActor:</span>
+<span class="kw">@MainActor</span>
+<span class="kw">class</span> <span class="type">ViewModel</span>: ObservableObject {
+    <span class="kw">func</span> <span class="fn">load</span>() <span class="kw">async</span> {
+        title = <span class="kw">await</span> <span class="fn">fetchTitle</span>()
+    }
+}`,
+
+  combine: `<span class="kw">var</span> cancellable: <span class="type">AnyCancellable</span>?
+
+cancellable = apiPublisher
+    <span class="cm">// Work runs on background queue</span>
+    .<span class="fn">subscribe</span>(on:
+        <span class="fn">DispatchQueue</span>.global(qos: .userInitiated)
+    )
+    .<span class="fn">map</span> { response <span class="kw">in</span>
+        response.<span class="fn">parse</span>() <span class="cm">// background</span>
+    }
+    <span class="cm">// Delivery switches to main</span>
+    .<span class="fn">receive</span>(on: <span class="fn">DispatchQueue</span>.main)
+    .<span class="fn">sink</span>(
+        receiveCompletion: { _ <span class="kw">in</span> },
+        receiveValue: { [<span class="kw">weak self</span>] data <span class="kw">in</span>
+            <span class="cm">// Safe — on main thread</span>
+            <span class="kw">self</span>?.label.text = data.title
+        }
+    )`,
+
+  reentrancy: `<span class="kw">actor</span> <span class="type">Cache</span> {
+    <span class="kw">var</span> data: <span class="type">String</span>? = <span class="kw">nil</span>
+    <span class="kw">var</span> isLoading = <span class="kw">false</span>
+    
+    <span class="cm">// BUG ✗ — reentrancy issue</span>
+    <span class="kw">func</span> <span class="fn">buggyLoad</span>() <span class="kw">async</span> {
+        <span class="kw">guard</span> !isLoading <span class="kw">else</span> { <span class="kw">return</span> }
+        isLoading = <span class="kw">true</span>
+        <span class="cm">// Actor suspends here! Another</span>
+        <span class="cm">// task can enter and see isLoading=true</span>
+        data = <span class="kw">await</span> <span class="fn">fetchData</span>()
+        isLoading = <span class="kw">false</span>
+    }
+    
+    <span class="cm">// FIX ✓ — re-check after await</span>
+    <span class="kw">func</span> <span class="fn">safeLoad</span>() <span class="kw">async</span> {
+        <span class="kw">guard</span> data == <span class="kw">nil</span>, !isLoading
+            <span class="kw">else</span> { <span class="kw">return</span> }
+        isLoading = <span class="kw">true</span>
+        <span class="kw">let</span> result = <span class="kw">await</span> <span class="fn">fetchData</span>()
+        <span class="kw">guard</span> data == <span class="kw">nil</span> <span class="kw">else</span> { <span class="kw">return</span> }
+        data = result
+        isLoading = <span class="kw">false</span>
+    }
+`
+,
+
+  dispatchgroup: `<span class="cm">// Real world: load dashboard data in parallel</span>
+<span class="kw">let</span> group = <span class="fn">DispatchGroup</span>()
+
+group.<span class="fn">enter</span>()
+<span class="fn">fetchUserProfile</span> { profile <span class="kw">in</span>
+    defer { group.<span class="fn">leave</span>() }
+    <span class="cm">// store profile</span>
+}
+
+group.<span class="fn">enter</span>()
+<span class="fn">fetchBalance</span> { balance <span class="kw">in</span>
+    defer { group.<span class="fn">leave</span>() }
+    <span class="cm">// store balance</span>
+}
+
+group.<span class="fn">enter</span>()
+<span class="fn">fetchDataQuota</span> { quota <span class="kw">in</span>
+    defer { group.<span class="fn">leave</span>() }
+    <span class="cm">// store quota</span>
+}
+
+<span class="cm">// Fires when ALL three complete</span>
+group.<span class="fn">notify</span>(queue: .main) {
+    <span class="kw">self</span>.<span class="fn">refreshDashboard</span>()
+}`,
+
+  semaphore: `<span class="cm">// Real world: limit concurrent photo uploads</span>
+<span class="kw">let</span> semaphore = <span class="fn">DispatchSemaphore</span>(value: <span class="num">2</span>)
+<span class="kw">let</span> photos: [<span class="type">Photo</span>] = <span class="fn">pendingPhotos</span>()
+
+<span class="fn">DispatchQueue</span>.global().<span class="fn">async</span> {
+    photos.<span class="fn">forEach</span> { photo <span class="kw">in</span>
+        <span class="cm">// Blocks if 2 uploads already running</span>
+        semaphore.<span class="fn">wait</span>()
+
+        <span class="fn">uploadPhoto</span>(photo) { result <span class="kw">in</span>
+            defer { semaphore.<span class="fn">signal</span>() }
+            <span class="fn">handleResult</span>(result)
+        }
+    }
+}`,
+
+  taskgroup: `<span class="cm">// Real world: fetch all localization bundles</span>
+<span class="kw">func</span> <span class="fn">fetchAllBundles</span>() <span class="kw">async</span> -> [<span class="type">Bundle</span>] {
+    <span class="kw">await</span> <span class="fn">withTaskGroup</span>(of: <span class="type">Bundle</span>?.self) { group <span class="kw">in</span>
+        <span class="kw">let</span> locales = [<span class="str">"en"</span>,<span class="str">"id"</span>,<span class="str">"ms"</span>,<span class="str">"th"</span>,<span class="str">"vi"</span>,<span class="str">"zh"</span>]
+
+        locales.<span class="fn">forEach</span> { locale <span class="kw">in</span>
+            group.<span class="fn">addTask</span> {
+                <span class="kw">await</span> <span class="fn">fetchBundle</span>(locale: locale)
+            }
+        }
+
+        <span class="cm">// Collect as each finishes (order may vary)</span>
+        <span class="kw">var</span> results: [<span class="type">Bundle</span>] = []
+        <span class="kw">for await</span> bundle <span class="kw">in</span> group {
+            <span class="kw">if let</span> b = bundle { results.<span class="fn">append</span>(b) }
+        }
+        <span class="kw">return</span> results
+    }
+}`,
+
+  taskcancellation: `<span class="cm">// Real world: search task cancelled on nav</span>
+<span class="kw">var</span> searchTask: <span class="type">Task</span><<span class="type">Void</span>, <span class="type">Never</span>>?
+
+<span class="kw">func</span> <span class="fn">search</span>(query: <span class="type">String</span>) {
+    searchTask?.<span class="fn">cancel</span>() <span class="cm">// cancel previous</span>
+    searchTask = <span class="fn">Task</span> {
+        <span class="cm">// Checkpoint 1: before network</span>
+        <span class="kw">guard</span> !Task.isCancelled <span class="kw">else</span> { <span class="kw">return</span> }
+        <span class="kw">let</span> results = <span class="kw">await</span> <span class="fn">searchAPI</span>(query)
+
+        <span class="cm">// Checkpoint 2: before parse</span>
+        <span class="kw">try</span>? Task.<span class="fn">checkCancellation</span>()
+        <span class="kw">let</span> parsed = <span class="fn">parse</span>(results)
+
+        <span class="cm">// Checkpoint 3: before UI update</span>
+        <span class="kw">guard</span> !Task.isCancelled <span class="kw">else</span> { <span class="kw">return</span> }
+        <span class="kw">await</span> MainActor.<span class="fn">run</span> {
+            <span class="kw">self</span>.<span class="fn">updateResults</span>(parsed)
+        }
+    }
+}
+
+<span class="kw">func</span> <span class="fn">viewDidDisappear</span>() {
+    searchTask?.<span class="fn">cancel</span>()
+}`,
+
+  locks: `<span class="cm">// Real world: thread-safe analytics buffer</span>
+<span class="kw">class</span> <span class="type">AnalyticsSDK</span> {
+    <span class="kw">private var</span> events: [<span class="type">Event</span>] = []
+
+    <span class="cm">// Option A: NSLock (simple, safe)</span>
+    <span class="kw">private let</span> lock = <span class="fn">NSLock</span>()
+
+    <span class="kw">func</span> <span class="fn">track</span>(_ event: <span class="type">Event</span>) {
+        lock.<span class="fn">lock</span>()
+        <span class="kw">defer</span> { lock.<span class="fn">unlock</span>() }
+        events.<span class="fn">append</span>(event)
+    }
+
+    <span class="cm">// Option B: os_unfair_lock (faster)</span>
+    <span class="kw">private var</span> unfairLock = os_unfair_lock()
+
+    <span class="kw">func</span> <span class="fn">trackFast</span>(_ event: <span class="type">Event</span>) {
+        os_unfair_lock_lock(&unfairLock)
+        <span class="kw">defer</span> { os_unfair_lock_unlock(&unfairLock) }
+        events.<span class="fn">append</span>(event)
+    }
+}`,
+
+  atomic: `<span class="cm">// Swift properties are NOT atomic by default</span>
+<span class="cm">// Build your own @Atomic wrapper:</span>
+
+<span class="kw">@propertyWrapper</span>
+<span class="kw">struct</span> <span class="type">Atomic</span><<span class="type">Value</span>> {
+    <span class="kw">private var</span> value: <span class="type">Value</span>
+    <span class="kw">private let</span> queue = <span class="fn">DispatchQueue</span>(
+        label: <span class="str">"atomic"</span>
+    )
+
+    <span class="kw">var</span> wrappedValue: <span class="type">Value</span> {
+        <span class="kw">get</span> { queue.<span class="fn">sync</span> { value } }
+        <span class="kw">set</span> { queue.<span class="fn">sync</span> { value = newValue } }
+    }
+}
+
+<span class="cm">// Usage in SDK:</span>
+<span class="kw">@Atomic var</span> pendingRequests = <span class="num">0</span>
+<span class="cm">// safe from any thread:</span>
+pendingRequests += <span class="num">1</span>`,
+
+  sendable: `<span class="cm">// NON-Sendable ✗ — class is a reference type</span>
+<span class="kw">class</span> <span class="type">SDKConfig</span> {        <span class="cm">// ← NOT Sendable</span>
+    <span class="kw">var</span> timeout: <span class="type">Int</span> = <span class="num">30</span>
+    <span class="kw">var</span> retries: <span class="type">Int</span> = <span class="num">3</span>
+}
+
+<span class="cm">// Passing to another actor mutates same ref</span>
+<span class="cm">// → both actors see each other's changes!</span>
+
+<span class="cm">// SENDABLE ✓ — struct is a value type</span>
+<span class="kw">struct</span> <span class="type">SDKConfig</span>: <span class="type">Sendable</span> {
+    <span class="kw">let</span> timeout: <span class="type">Int</span>
+    <span class="kw">let</span> retries: <span class="type">Int</span>
+}
+
+<span class="cm">// Crossing an actor boundary copies the value</span>
+<span class="cm">// → each actor has its own independent copy</span>
+
+<span class="kw">actor</span> <span class="type">NetworkManager</span> {
+    <span class="kw">func</span> <span class="fn">configure</span>(_ c: <span class="type">SDKConfig</span>) { }
+}`,
+
+  priorityinversion: `<span class="cm">// Priority inversion scenario</span>
+
+<span class="cm">// Background task holds the lock</span>
+<span class="fn">DispatchQueue</span>.global(qos: .background)
+    .<span class="fn">async</span> {
+        lock.<span class="fn">lock</span>()           <span class="cm">// acquired!</span>
+        <span class="fn">longRunningSync</span>()    <span class="cm">// holds for 2s</span>
+        lock.<span class="fn">unlock</span>()
+    }
+
+<span class="cm">// High-priority animation task needs lock</span>
+<span class="fn">DispatchQueue</span>.global(qos: .userInteractive)
+    .<span class="fn">async</span> {
+        lock.<span class="fn">lock</span>()   <span class="cm">// BLOCKED by background!</span>
+        <span class="fn">updateAnimation</span>()
+        lock.<span class="fn">unlock</span>()
+    }
+
+<span class="cm">// Fix: GCD auto-elevates the background task's</span>
+<span class="cm">// QoS to match the waiter — resolves inversion</span>`
+};
+
+// Scene metadata
+const SCENE_META = {
+  gcd:        { title: 'GCD & Queues',           badge: 'Fundamental', color: 'var(--main)' },
+  mainthread: { title: 'Main Thread Rule',        badge: 'Rule #1',     color: 'var(--teal)' },
+  qos:        { title: 'QoS Classes',             badge: 'Performance', color: 'var(--purple)' },
+  deadlock:   { title: 'Deadlock',                badge: 'Pitfall',     color: 'var(--red)' },
+  race:       { title: 'Data Race',               badge: 'Pitfall',     color: 'var(--amber)' },
+  explosion:  { title: 'Thread Explosion',        badge: 'Pitfall',     color: 'var(--amber)' },
+  barrier:    { title: 'Dispatch Barrier',        badge: 'Sync Pattern',color: 'var(--purple)' },
+  actor:      { title: 'Swift Actors',            badge: 'Modern Swift',color: 'var(--teal)' },
+  serial:     { title: 'Serial Isolation',        badge: 'Sync Pattern',color: 'var(--green)' },
+  asyncawait: { title: 'async/await',             badge: 'Modern Swift',color: 'var(--main)' },
+  combine:    { title: 'Combine Schedulers',      badge: 'Reactive',    color: 'var(--purple)' },
+  reentrancy:        { title: 'Actor Reentrancy',       badge: 'Pitfall',       color: 'var(--red)' },
+  dispatchgroup:     { title: 'DispatchGroup',           badge: 'Coordination',  color: 'var(--main)' },
+  semaphore:         { title: 'DispatchSemaphore',       badge: 'Coordination',  color: 'var(--purple)' },
+  taskgroup:         { title: 'TaskGroup',               badge: 'Modern Swift',  color: 'var(--teal)' },
+  taskcancellation:  { title: 'Task Cancellation',       badge: 'Modern Swift',  color: 'var(--red)' },
+  locks:             { title: 'NSLock & os_unfair_lock', badge: 'Sync Primitive',color: 'var(--amber)' },
+  atomic:            { title: '@Atomic Property',        badge: 'Sync Pattern',  color: 'var(--green)' },
+  sendable:          { title: 'Sendable & Actors',       badge: 'Safety',        color: 'var(--purple)' },
+  priorityinversion: { title: 'Priority Inversion',      badge: 'Pitfall',       color: 'var(--amber)' },
+};
+
+function showScene(id) {
+  clearAllTimers();
+  document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('scene-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') === `showScene('${id}')`) n.classList.add('active');
+  });
+  const meta = SCENE_META[id];
+  document.getElementById('scene-title').textContent = meta.title;
+  const badge = document.getElementById('scene-badge');
+  badge.textContent = meta.badge;
+  badge.style.background = meta.color + '22';
+  badge.style.color = meta.color;
+  document.getElementById('code-content').innerHTML = CODES[id] || '';
+}
+
+// ── GCD Scene ──────────────────────────────────────────────────────────────
+
+let gcdRunning = false;
+function gcdReset() {
+  clearAllTimers(); gcdRunning = false;
+  document.getElementById('serial-track').innerHTML = '<span style="color:var(--text3);font-size:12px;font-family:var(--mono)">// waiting...</span>';
+  document.getElementById('concurrent-track').innerHTML = '<span style="color:var(--text3);font-size:12px;font-family:var(--mono)">// waiting...</span>';
+  document.getElementById('serial-progress').style.width = '0%';
+  document.getElementById('serial-status').textContent = 'idle';
+  document.getElementById('concurrent-status').textContent = 'idle';
+  clearLog('gcd-log');
+}
+
+function gcdRun() {
+  if (gcdRunning) return;
+  gcdRunning = true;
+  const n = parseInt(document.getElementById('gcd-task-count').value);
+  document.getElementById('serial-track').innerHTML = '';
+  document.getElementById('concurrent-track').innerHTML = '';
+  clearLog('gcd-log');
+  tlClear('gcd');
+  tlAnimate('gcd', scaled(n * 900 + 1200));
+
+  const colors = [
+    ['var(--main)', 'var(--main-dim)', 'rgba(79,142,247,.25)'],
+    ['var(--teal)', 'var(--teal-dim)', 'rgba(45,212,168,.25)'],
+    ['var(--purple)', 'var(--purple-dim)', 'rgba(167,139,250,.25)'],
+    ['var(--amber)', 'var(--amber-dim)', 'rgba(245,166,35,.25)'],
+    ['var(--red)', 'var(--red-dim)', 'rgba(240,92,92,.25)'],
+    ['var(--green)', 'var(--green-dim)', 'rgba(74,222,128,.2)'],
+  ];
+
+  // Serial
+  document.getElementById('serial-status').innerHTML = pill('running', 'var(--main-dim)', 'var(--main)');
+  log('gcd-log', 'Serial queue started', 'ok', 'main');
+  let serialDelay = 0;
+  const taskDuration = 900;
+  for (let i = 0; i < n; i++) {
+    const c = colors[i % colors.length];
+    const label = `task-${i+1}`;
+    ;(function(idx, delay, col) {
+      later(() => {
+        log('gcd-log', `serial.async { ${label} } dispatched`, '', 'main');
+        const el = makeTask(label, col[0], col[1], col[2]);
+        document.getElementById('serial-track').appendChild(el);
+        const pct = ((idx+1)/n)*100;
+        document.getElementById('serial-progress').style.width = pct + '%';
+        const tlDoneSerial = tlRecord('Serial Q', label, col[0], col[1]);
+        later(() => {
+          tlDoneSerial();
+          log('gcd-log', `${label} completed`, 'ok', 'bg');
+          el.style.opacity = '.35';
+          el.classList.remove('task-running');
+          if (idx === n-1) {
+            document.getElementById('serial-status').innerHTML = pill('done ✓', 'var(--teal-dim)', 'var(--teal)');
+          }
+        }, taskDuration - 100);
+      }, delay);
+    })(i, serialDelay, c);
+    serialDelay += taskDuration;
+  }
+
+  // Concurrent — all at once
+  log('gcd-log', 'Concurrent queue started', 'ok', 'main');
+  document.getElementById('concurrent-status').innerHTML = pill('running', 'var(--teal-dim)', 'var(--teal)');
+  const durations = [700, 1100, 600, 1400, 800, 1000, 500, 900];
+  for (let i = 0; i < n; i++) {
+    const c = colors[i % colors.length];
+    const label = `task-${i+1}`;
+    const dur = durations[i % durations.length];
+    ;(function(idx, col, d) {
+      later(() => {
+        log('gcd-log', `concurrent.async { ${label} } — running on pool`, '', 'main');
+        const el = makeTask(label, col[0], col[1], col[2]);
+        document.getElementById('concurrent-track').appendChild(el);
+        const tlDoneConc = tlRecord('Concurrent Q', label, col[0], col[1]);
+        later(() => {
+          tlDoneConc();
+          log('gcd-log', `${label} completed`, 'ok', 'bg'+(idx%3+1));
+          el.style.opacity = '.35';
+          el.classList.remove('task-running');
+          if (idx === n-1) {
+            later(() => {
+              document.getElementById('concurrent-status').innerHTML = pill('done ✓', 'var(--teal-dim)', 'var(--teal)');
+            }, 200);
+          }
+        }, d);
+      }, 50 * idx);
+    })(i, c, dur);
+  }
+}
+
+// ── Main Thread Scene ──────────────────────────────────────────────────────
+
+function mainThreadReset() {
+  clearAllTimers();
+  document.getElementById('bg-track').innerHTML = '';
+  document.getElementById('main-track').innerHTML = '<div class="task-block" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,.2)"><div class="task-dot" style="background:var(--teal)"></div>RunLoop.main</div>';
+  document.getElementById('bg-status').textContent = 'idle';
+  document.getElementById('main-warning-area').innerHTML = '';
+  clearLog('main-log');
+}
+
+function mainThreadDemo(mode) {
+  tlClear('mainthread');
+  tlAnimate('mainthread', scaled(2500));
+  mainThreadReset();
+  const bgTrack = document.getElementById('bg-track');
+  const mainTrack = document.getElementById('main-track');
+
+  log('main-log', 'DispatchQueue.global().async { }', '', 'main');
+  document.getElementById('bg-status').innerHTML = pill('running', 'var(--main-dim)', 'var(--main)');
+
+  const fetchEl = makeTask('fetchData()', 'var(--main)', 'var(--main-dim)', 'rgba(79,142,247,.25)');
+  bgTrack.appendChild(fetchEl);
+  const tlFetch = tlRecord('Background', 'fetchData()', 'var(--main)', 'var(--main-dim)');
+
+  later(() => {
+    tlFetch();
+    log('main-log', 'fetchData() done — got response', 'ok', 'bg');
+    fetchEl.classList.remove('task-running');
+    fetchEl.style.opacity = '.4';
+
+    if (mode === 'correct') {
+      const dispatchEl = makeTask('DispatchQueue.main.async { }', 'var(--purple)', 'var(--purple-dim)', 'rgba(167,139,250,.25)');
+      bgTrack.appendChild(dispatchEl);
+      log('main-log', 'DispatchQueue.main.async { } — hopping to main...', '', 'bg');
+
+      const tlDisp = tlRecord('Main', 'UI update ✓', 'var(--teal)', 'var(--teal-dim)');
+      later(() => {
+        tlDisp();
+        dispatchEl.style.opacity = '.4';
+        dispatchEl.classList.remove('task-running');
+        const uiEl = makeTask('label.text = data.title ✓', 'var(--teal)', 'var(--teal-dim)', 'rgba(45,212,168,.25)');
+        mainTrack.appendChild(uiEl);
+        log('main-log', 'label.text updated — safe on main thread', 'ok', 'main');
+        document.getElementById('bg-status').innerHTML = pill('done ✓', 'var(--teal-dim)', 'var(--teal)');
+      }, 700);
+    } else {
+      log('main-log', 'UPDATING UI FROM BACKGROUND THREAD!', 'error', 'bg');
+      const badEl = makeTask('label.text = data.title ✗', 'var(--red)', 'var(--red-dim)', 'rgba(240,92,92,.25)');
+      bgTrack.appendChild(badEl);
+      tlRecord('Background', 'UI violation ✗', 'var(--red)', 'var(--red-dim)')();
+      later(() => {
+        document.getElementById('main-warning-area').innerHTML = `
+          <div class="warning-box">
+            <div class="warning-icon">⚠</div>
+            <div>
+              <div class="warning-title">Main Thread Checker: UI API called on background thread</div>
+              <div class="warning-body">UILabel.text must be used from main thread only. This can cause visual corruption, layout failures, or EXC_BAD_ACCESS crash. Enable Main Thread Checker in Xcode Scheme Diagnostics to catch this at runtime.</div>
+            </div>
+          </div>`;
+        document.getElementById('bg-status').innerHTML = pill('violation!', 'var(--red-dim)', 'var(--red)');
+        log('main-log', 'Runtime crash: EXC_BAD_ACCESS or visual glitch', 'error', 'bg');
+      }, 400);
+    }
+  }, 1200);
+}
+
+// ── QoS Scene ──────────────────────────────────────────────────────────────
+
+const QOS_LEVELS = [
+  { name: 'userInteractive', label: '.userInteractive', color: 'var(--red)', dim: 'var(--red-dim)', border: 'rgba(240,92,92,.25)', speed: 400, desc: 'Animations, gestures' },
+  { name: 'userInitiated',   label: '.userInitiated',   color: 'var(--amber)', dim: 'var(--amber-dim)', border: 'rgba(245,166,35,.25)', speed: 650, desc: 'Awaiting result' },
+  { name: 'default',         label: '.default',         color: 'var(--main)', dim: 'var(--main-dim)', border: 'rgba(79,142,247,.25)', speed: 950, desc: 'General work' },
+  { name: 'utility',         label: '.utility',         color: 'var(--purple)', dim: 'var(--purple-dim)', border: 'rgba(167,139,250,.25)', speed: 1400, desc: 'Long running' },
+  { name: 'background',      label: '.background',      color: 'var(--text2)', dim: 'var(--bg4)', border: 'var(--border2)', speed: 2200, desc: 'Not time-sensitive' },
+];
+
+function qosReset() {
+  clearAllTimers();
+  const lanes = document.getElementById('qos-lanes');
+  lanes.innerHTML = '';
+  QOS_LEVELS.forEach(q => {
+    lanes.innerHTML += `
+      <div class="thread-container">
+        <div class="thread-header">
+          <div class="thread-name"><span style="color:${q.color}">●</span> DispatchQueue.global(qos: <span style="color:${q.color}">${q.label}</span>)</div>
+          <span style="font-size:11px;color:var(--text3)">${q.desc}</span>
+        </div>
+        <div class="thread-track" id="qos-${q.name}" style="gap:6px">
+          <span style="color:var(--text3);font-size:12px;font-family:var(--mono)">// idle</span>
+        </div>
+      </div>`;
+  });
+  clearLog('qos-log');
+}
+
+function qosRun() {
+  qosReset();
+  tlClear('qos');
+  tlAnimate('qos', scaled(3000));
+  later(() => {
+    QOS_LEVELS.forEach((q, i) => {
+      later(() => {
+        const track = document.getElementById('qos-'+q.name);
+        track.innerHTML = '';
+        const el = makeTask('work()', q.color, q.dim, q.border);
+        track.appendChild(el);
+        log('qos-log', `[${q.label}] task started`, '', 'bg');
+        const tlDoneQos = tlRecord(q.label, 'work()', q.color, q.dim);
+
+        const bar = document.createElement('div');
+        bar.className = 'progress-bar';
+        bar.style.width = '100%';
+        const fill = document.createElement('div');
+        fill.className = 'progress-fill';
+        fill.style.cssText = `width:0%;background:${q.color}`;
+        bar.appendChild(fill);
+        track.appendChild(bar);
+
+        let pct = 0;
+        const step = 30;
+        const interval = q.speed / (100/step);
+        const iv = setInterval(() => {
+          pct = Math.min(100, pct + step + Math.random()*10);
+          fill.style.width = pct + '%';
+          if (pct >= 100) {
+            clearInterval(iv);
+            tlDoneQos();
+            el.classList.remove('task-running');
+            el.style.opacity = '.4';
+            el.innerHTML = `<div class="task-dot" style="background:${q.color}"></div>done ✓`;
+            log('qos-log', `[${q.label}] completed`, 'ok', 'bg');
+          }
+        }, interval);
+        timers.push(iv);
+      }, i * 60);
+    });
+  }, 100);
+}
+
+// ── Deadlock Scene ──────────────────────────────────────────────────────────
+
+function deadlockReset() {
+  clearAllTimers();
+  document.getElementById('dl-main-track').innerHTML = '<div class="task-block" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,.2)"><div class="task-dot" style="background:var(--teal)"></div>RunLoop.main</div>';
+  document.getElementById('dl-lock-track').innerHTML = '';
+  document.getElementById('dl-main-status').innerHTML = pill('running', 'var(--teal-dim)', 'var(--teal)');
+  document.getElementById('dl-lock-status').textContent = 'idle';
+  document.getElementById('dl-main-dot').style.color = 'var(--teal)';
+  document.getElementById('deadlock-warning-area').innerHTML = '';
+  clearLog('deadlock-log');
+}
+
+function deadlockDemo() {
+  deadlockReset();
+  tlClear('deadlock');
+  tlAnimate('deadlock', scaled(3000));
+  const mainTrack = document.getElementById('dl-main-track');
+  const lockTrack = document.getElementById('dl-lock-track');
+  log('deadlock-log', 'viewDidLoad() called — on main thread', '', 'main');
+  const tlMain = tlRecord('Main Thread', 'viewDidLoad()', 'var(--teal)', 'var(--teal-dim)');
+
+  later(() => {
+    const syncEl = makeTask('DispatchQueue.main.sync { }', 'var(--red)', 'var(--red-dim)', 'rgba(240,92,92,.25)');
+    mainTrack.appendChild(syncEl);
+    log('deadlock-log', 'DispatchQueue.main.sync { } called — BLOCKING main thread...', 'warn', 'main');
+    const tlSync = tlRecord('Main Thread', 'main.sync { } BLOCKED', 'var(--red)', 'var(--red-dim)');
+    const tlLock = tlRecord('sync closure', 'waiting for main…', 'var(--amber)', 'var(--amber-dim)');
+
+    later(() => {
+      const waitEl = makeTask('⏳ waiting for main...', 'var(--amber)', 'var(--amber-dim)', 'rgba(245,166,35,.25)');
+      lockTrack.appendChild(waitEl);
+      document.getElementById('dl-lock-status').innerHTML = pill('waiting...', 'var(--amber-dim)', 'var(--amber)');
+      log('deadlock-log', 'sync closure waiting for main thread to be free...', 'warn', 'bg');
+
+      later(() => {
+        document.getElementById('dl-main-status').innerHTML = pill('DEADLOCKED', 'var(--red-dim)', 'var(--red)');
+        document.getElementById('dl-lock-status').innerHTML = pill('DEADLOCKED', 'var(--red-dim)', 'var(--red)');
+        document.getElementById('dl-main-dot').style.color = 'var(--red)';
+        syncEl.innerHTML = '<div class="task-dot" style="background:var(--red)"></div><span class="spin">↻</span> main.sync — blocked forever';
+        waitEl.innerHTML = '<div class="task-dot" style="background:var(--red)"></div><span class="spin">↻</span> waiting for main — never comes';
+        log('deadlock-log', 'DEADLOCK: main waiting for closure, closure waiting for main', 'error', 'main');
+        log('deadlock-log', 'App freezes — no crash log, no recovery. Force kill required.', 'error', '');
+        document.getElementById('deadlock-warning-area').innerHTML = `
+          <div class="warning-box">
+            <div class="warning-icon">⚠</div>
+            <div>
+              <div class="warning-title">Deadlock detected — application frozen</div>
+              <div class="warning-body">Main thread is waiting for <code style="font-family:var(--mono);font-size:11px">sync</code> to execute, but sync can only execute on main. Classic circular wait. Fix: always use <code style="font-family:var(--mono);font-size:11px">DispatchQueue.main.async</code> instead.</div>
+            </div>
+          </div>`;
+      }, 900);
+    }, 600);
+  }, 600);
+}
+
+function deadlockFix() {
+  deadlockReset();
+  tlClear('deadlock');
+  tlAnimate('deadlock', scaled(1800));
+  const mainTrack = document.getElementById('dl-main-track');
+  log('deadlock-log', 'viewDidLoad() — calling DispatchQueue.main.async { }', '', 'main');
+  const tlVDL = tlRecord('Main Thread', 'viewDidLoad()', 'var(--teal)', 'var(--teal-dim)');
+  later(() => {
+    const asyncEl = makeTask('DispatchQueue.main.async { }', 'var(--main)', 'var(--main-dim)', 'rgba(79,142,247,.25)');
+    mainTrack.appendChild(asyncEl);
+    log('deadlock-log', 'async dispatched — main thread NOT blocked', 'ok', 'main');
+    const tlAsync = tlRecord('Main Thread', 'async { label.text }', 'var(--main)', 'var(--main-dim)');
+    later(() => {
+      tlVDL(); tlAsync();
+      asyncEl.innerHTML = '<div class="task-dot" style="background:var(--main)"></div>label.text = "hello" ✓';
+      asyncEl.classList.remove('task-running');
+      log('deadlock-log', 'Closure executed on next run loop cycle — no deadlock!', 'ok', 'main');
+      document.getElementById('dl-main-status').innerHTML = pill('running ✓', 'var(--teal-dim)', 'var(--teal)');
+    }, 800);
+  }, 600);
+}
+
+// ── Data Race Scene ──────────────────────────────────────────────────────────
+
+let raceCounter = 0;
+let raceExpected = 0;
+function raceReset() {
+  clearAllTimers(); raceCounter = 0; raceExpected = 0;
+  document.getElementById('race-counter').textContent = '0';
+  document.getElementById('race-expected').textContent = 'Expected: 0';
+  document.getElementById('race-progress').style.width = '0%';
+  document.getElementById('race-threads').innerHTML = '';
+  document.getElementById('race-safe-badge').innerHTML = '⚠ Not thread-safe';
+  document.getElementById('race-safe-badge').style.cssText = 'background:var(--red-dim);color:var(--red);border:1px solid rgba(240,92,92,0.3)';
+  clearLog('race-log');
+}
+
+function raceDemo() {
+  raceReset();
+  const n = 6;
+  raceExpected = n * 10;
+  document.getElementById('race-expected').textContent = `Expected: ${raceExpected}`;
+  const threadsEl = document.getElementById('race-threads');
+  threadsEl.innerHTML = '';
+  const colors = ['var(--main)','var(--purple)','var(--teal)','var(--amber)','var(--red)','var(--green)'];
+
+  log('race-log', `Launching ${n} threads, each incrementing counter 10x`, 'warn', '');
+  tlClear('race');
+  tlAnimate('race', scaled(2500));
+  const raceColors = ['var(--main)','var(--purple)','var(--teal)','var(--amber)','var(--red)','var(--green)'];
+  const raceDims   = ['var(--main-dim)','var(--purple-dim)','var(--teal-dim)','var(--amber-dim)','var(--red-dim)','var(--green-dim)'];
+
+  for (let t = 0; t < n; t++) {
+    const col = colors[t];
+    const threadEl = document.createElement('div');
+    threadEl.className = 'thread-container';
+    threadEl.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:${col}">●</span> Thread-${t+1}</div></div><div class="thread-track" id="race-t${t}" style="min-height:40px"></div>`;
+    threadsEl.appendChild(threadEl);
+
+    for (let i = 0; i < 10; i++) {
+      ;(function(ti, ii, c) {
+        const delay = Math.random() * 1500;
+        later(() => {
+          const read = raceCounter;
+          later(() => {
+            const glitch = Math.random() < 0.4;
+            if (!glitch) raceCounter = read + 1;
+            else raceCounter = Math.max(0, raceCounter + (Math.random() > .5 ? 1 : 0));
+            const el = document.getElementById('race-t'+ti);
+            if (el) el.innerHTML = `<div class="task-block race-flash" style="background:${c}22;color:${c};border:1px solid ${c}44;font-size:10.5px"><div class="task-dot" style="background:${c}"></div>+1 → ${raceCounter}</div>`;
+            document.getElementById('race-counter').textContent = raceCounter;
+            document.getElementById('race-progress').style.width = (raceCounter/raceExpected*100) + '%';
+            if (raceCounter !== raceExpected && ii === 9) {
+              log('race-log', `Thread-${ti+1}: done. counter=${raceCounter} (expected grew by 10)`, 'warn', 'bg'+(ti+1));
+            }
+          }, 80 + Math.random()*60);
+        }, delay);
+      })(t, i, col);
+    }
+  }
+
+  later(() => {
+    const diff = Math.abs(raceCounter - raceExpected);
+    if (diff > 0) {
+      log('race-log', `RACE CONDITION: final=${raceCounter}, expected=${raceExpected}, lost ${diff} increments`, 'error', '');
+    }
+  }, 2200);
+}
+
+function raceFix() {
+  raceReset();
+  document.getElementById('race-safe-badge').innerHTML = '✓ Thread-safe (serial queue)';
+  document.getElementById('race-safe-badge').style.cssText = 'background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,0.3)';
+  const n = 6; raceExpected = n * 10;
+  document.getElementById('race-expected').textContent = `Expected: ${raceExpected}`;
+
+  log('race-log', 'Using serial DispatchQueue to serialize all increments', 'ok', '');
+  tlClear('race');
+  tlAnimate('race', scaled(1500));
+
+  let ops = [];
+  for (let t = 0; t < n; t++) {
+    for (let i = 0; i < 10; i++) {
+      ops.push({ t, i, delay: Math.random() * 1200 });
+    }
+  }
+  ops.sort((a,b) => a.delay - b.delay);
+  ops.forEach(op => {
+    ;(function(myOp) {
+      later(() => {
+        const tDone = tlRecord('Serial Q', '+1 → ' + (raceCounter+1), 'var(--teal)', 'var(--teal-dim)');
+        raceCounter++;
+        tDone();
+        document.getElementById('race-counter').textContent = raceCounter;
+        document.getElementById('race-progress').style.width = (raceCounter/raceExpected*100) + '%';
+        if (raceCounter === raceExpected) {
+          log('race-log', `All done! counter=${raceCounter} — matches expected ✓`, 'ok', '');
+        }
+      }, myOp.delay);
+    })(op);
+  });
+}
+
+// ── Thread Explosion ──────────────────────────────────────────────────────
+
+let threadCount = 0;
+function explosionReset() {
+  clearAllTimers(); threadCount = 0;
+  document.getElementById('explosion-grid').innerHTML = '';
+  document.getElementById('thread-count').textContent = '0';
+  document.getElementById('explosion-bar').style.width = '0%';
+  document.getElementById('explosion-warning-area').innerHTML = '';
+  clearLog('explosion-log');
+}
+
+function addThreadPill(color, label) {
+  const el = document.createElement('div');
+  el.style.cssText = `width:28px;height:28px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);color:#000;font-weight:600;animation:slideIn .2s ease;flex-shrink:0;`;
+  el.textContent = label;
+  document.getElementById('explosion-grid').appendChild(el);
+  threadCount++;
+  document.getElementById('thread-count').textContent = threadCount;
+  document.getElementById('explosion-bar').style.width = Math.min(threadCount/64*100, 100) + '%';
+  if (threadCount >= 50) document.getElementById('explosion-bar').style.background = 'var(--red)';
+}
+
+function explosionDemo() {
+  explosionReset();
+  log('explosion-log', 'Calling concurrent.async { concurrent.sync { } } repeatedly...', 'warn', '');
+  tlClear('explosion');
+  tlAnimate('explosion', scaled(5000));
+  const colors = ['#8be9fd','#bd93f9','#ffb86c','#ff5555','#50fa7b','#ff79c6'];
+  let i = 0;
+  const iv = setInterval(() => {
+    if (i >= 52) {
+      clearInterval(iv);
+      log('explosion-log', `Thread explosion! ${threadCount} threads created — system thrashing`, 'error', '');
+      document.getElementById('explosion-warning-area').innerHTML = `
+        <div class="warning-box">
+          <div class="warning-icon">⚠</div>
+          <div>
+            <div class="warning-title">Thread explosion — system resource exhaustion</div>
+            <div class="warning-body">GCD spawned ${threadCount} threads because each sync { } blocked a thread, forcing new ones. This exhausts the 64-thread limit, causing priority inversion, memory pressure, and eventual watchdog termination.</div>
+          </div>
+        </div>`;
+      return;
+    }
+    addThreadPill(colors[i % colors.length], 'T'+i);
+    if (i % 8 === 0) {
+      log('explosion-log', `Thread ${i} spawned — queue saturated, spawning more`, 'warn', 'bg');
+      tlRecord('Thread pool', 'T'+i+' spawned (blocked)', colors[i%colors.length], colors[i%colors.length]+'22')();
+    }
+    i++;
+  }, 80);
+  timers.push(iv);
+}
+
+function explosionFix() {
+  explosionReset();
+  log('explosion-log', 'Using async — no threads blocked, cooperative pool reuses threads', 'ok', '');
+  tlClear('explosion');
+  tlAnimate('explosion', scaled(2500));
+  const colors = ['#8be9fd','#bd93f9','#50fa7b'];
+  let peak = 0;
+  const iv = setInterval(() => {
+    if (peak >= 4) {
+      // Reuse threads
+      const grid = document.getElementById('explosion-grid');
+      if (grid.children.length > 4) {
+        grid.removeChild(grid.lastChild);
+        threadCount--;
+        document.getElementById('thread-count').textContent = threadCount;
+      }
+    } else {
+      addThreadPill(colors[peak % 3], 'T'+peak);
+      peak++;
+    }
+    if (peak >= 4) {
+      clearInterval(iv);
+      log('explosion-log', `Only ${threadCount} threads used — async allows pool reuse`, 'ok', '');
+    }
+  }, 400);
+  timers.push(iv);
+}
+
+// ── Barrier Scene ──────────────────────────────────────────────────────────
+
+function barrierReset() {
+  clearAllTimers();
+  document.getElementById('barrier-track').innerHTML = '';
+  clearLog('barrier-log');
+}
+
+function barrierRun() {
+  barrierReset();
+  tlClear('barrier');
+  tlAnimate('barrier', scaled(2500));
+  const track = document.getElementById('barrier-track');
+
+  const ops = [
+    { type: 'read', label: 'read() — sync', delay: 0, dur: 700 },
+    { type: 'read', label: 'read() — sync', delay: 80, dur: 600 },
+    { type: 'read', label: 'read() — sync', delay: 160, dur: 800 },
+    { type: 'write', label: 'write("new") — barrier', delay: 900, dur: 500 },
+    { type: 'read', label: 'read() — sync', delay: 1500, dur: 600 },
+    { type: 'read', label: 'read() — sync', delay: 1580, dur: 700 },
+  ];
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:4px 0';
+  track.appendChild(row);
+
+  ops.forEach(op => {
+    later(() => {
+      if (op.type === 'barrier') {
+        row.innerHTML = '';
+        const sep = document.createElement('div');
+        sep.style.cssText = 'width:100%;height:1px;background:rgba(240,92,92,.3);margin:4px 0';
+        track.appendChild(sep);
+        const el = makeTask('⛔ BARRIER: ' + op.label, 'var(--red)', 'var(--red-dim)', 'rgba(240,92,92,.3)');
+        el.style.width = '100%';
+        track.appendChild(el);
+        log('barrier-log', 'BARRIER write acquired — all readers must finish first', 'warn', 'bg');
+        const tlBarr = tlRecord('Barrier write', 'write("new")', 'var(--red)', 'var(--red-dim)');
+        later(() => {
+          tlBarr();
+          el.style.opacity = '.4'; el.classList.remove('task-running');
+          el.innerHTML = '<div class="task-dot" style="background:var(--red)"></div>write complete ✓';
+          log('barrier-log', 'write("new") done — barrier released', 'ok', 'bg');
+          const newRow = document.createElement('div');
+          newRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;padding:4px 0';
+          track.appendChild(newRow);
+          row.parentNode.replaceChild(newRow, row);
+        }, op.dur);
+      } else {
+        const el = makeTask(op.label, 'var(--main)', 'var(--main-dim)', 'rgba(79,142,247,.25)');
+        row.appendChild(el);
+        log('barrier-log', 'read() running concurrently', '', 'bg');
+        const tlRead = tlRecord('Concurrent read', 'read()', 'var(--main)', 'var(--main-dim)');
+        later(() => {
+          tlRead();
+          el.style.opacity = '.4'; el.classList.remove('task-running');
+          el.innerHTML = '<div class="task-dot" style="background:var(--main)"></div>read ✓';
+        }, op.dur);
+      }
+    }, op.delay);
+  });
+}
+
+// ── Actor Scene ──────────────────────────────────────────────────────────────
+
+let unsafeCount = 0, safeCount = 0;
+function actorReset() {
+  clearAllTimers(); unsafeCount = 0; safeCount = 0;
+  document.getElementById('unsafe-count').textContent = '0';
+  document.getElementById('safe-count').textContent = '0';
+  document.getElementById('unsafe-callers').innerHTML = '';
+  document.getElementById('safe-callers').innerHTML = '';
+  clearLog('actor-log');
+}
+
+function actorRun() {
+  actorReset();
+  const n = 5;
+  const colors = ['var(--main)','var(--purple)','var(--teal)','var(--amber)','var(--red)'];
+  log('actor-log', `Sending ${n} concurrent increment() calls to each counter`, '');
+  tlClear('actor');
+  tlAnimate('actor', scaled(1800));
+
+  for (let i = 0; i < n; i++) {
+    const col = colors[i];
+    ;(function(idx, c) {
+      const baseDelay = Math.random() * 600;
+
+      // Unsafe — race
+      later(() => {
+        const el = document.createElement('div');
+        el.className = 'actor-task';
+        el.style.cssText = `border-color:${c}44;`;
+        el.innerHTML = `<div class="task-dot" style="background:${c}"></div><span style="color:${c}">caller-${idx+1}</span> increment()`;
+        document.getElementById('unsafe-callers').appendChild(el);
+        const readVal = unsafeCount;
+        later(() => {
+          const glitch = Math.random() < 0.35;
+          if (!glitch) unsafeCount = readVal + 1;
+          document.getElementById('unsafe-count').textContent = unsafeCount;
+          el.style.opacity = '.35';
+          el.innerHTML = `<div class="task-dot" style="background:${c}"></div><span style="color:${c}">caller-${idx+1}</span> → ${unsafeCount} ${glitch ? '⚠ lost write' : ''}`;
+          if (glitch) log('actor-log', `caller-${idx+1}: RACE — write lost! count=${unsafeCount}`, 'error', 'bg');
+        }, 200 + Math.random()*200);
+      }, baseDelay);
+
+      // Safe actor — serialize
+      later(() => {
+        const el = document.createElement('div');
+        el.className = 'actor-task';
+        el.style.cssText = `border-color:${c}44;`;
+        el.innerHTML = `<div class="task-dot" style="background:${c}"></div><span style="color:${c}">caller-${idx+1}</span> await counter.increment()`;
+        document.getElementById('safe-callers').appendChild(el);
+        const myTurn = safeCount;
+        later(() => {
+          safeCount = myTurn + 1;
+          document.getElementById('safe-count').textContent = safeCount;
+          el.style.opacity = '.35';
+          el.innerHTML = `<div class="task-dot" style="background:${c}"></div><span style="color:${c}">caller-${idx+1}</span> → ${safeCount} ✓`;
+          log('actor-log', `caller-${idx+1}: actor serialized — count=${safeCount}`, 'ok', 'actor');
+        }, (idx * 280) + 100);
+      }, baseDelay + 50);
+    })(i, col);
+  }
+}
+
+// ── Serial Isolation ──────────────────────────────────────────────────────
+
+let serialData = [];
+function serialReset() {
+  clearAllTimers(); serialData = [];
+  document.getElementById('serial-data-display').innerHTML = '';
+  document.getElementById('serial-count').textContent = '0';
+  document.getElementById('serial-writer-threads').innerHTML = '';
+  clearLog('serial-log');
+}
+
+function serialDemo(mode) {
+  serialReset();
+  const writers = ['Writer-A', 'Writer-B', 'Writer-C'];
+  const colors = ['var(--main)', 'var(--purple)', 'var(--teal)'];
+  const threadsEl = document.getElementById('serial-writer-threads');
+
+  writers.forEach((w, i) => {
+    const col = colors[i];
+    const el = document.createElement('div');
+    el.className = 'thread-container';
+    el.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:${col}">●</span> ${w}</div></div><div class="thread-track" id="sw-${i}" style="min-height:40px;flex-direction:column;gap:4px"></div>`;
+    threadsEl.appendChild(el);
+  });
+
+  tlClear('serial');
+  tlAnimate('serial', scaled(1800));
+  if (mode === 'unsafe') {
+    log('serial-log', 'No synchronization — concurrent appends to shared array', 'warn', '');
+    writers.forEach((w, i) => {
+      const col = colors[i];
+      for (let j = 0; j < 4; j++) {
+        ;(function(_w,_i,_j,_col) {
+          later(() => {
+            const val = `${_w.slice(-1)}${_j+1}`;
+            const tlS = tlRecord(_w, 'append(' + val + ')', _col, _col+'22');
+            serialData.push(val);
+            tlS();
+            const display = document.getElementById('serial-data-display');
+            const pill = document.createElement('div');
+            pill.className = 'queue-item race-flash';
+            pill.style.cssText = `color:${_col};border-color:${_col}44`;
+            pill.textContent = val;
+            display.appendChild(pill);
+            document.getElementById('serial-count').textContent = serialData.length;
+            log('serial-log', `${_w} appended "${val}" — unsynchronized`, 'warn', 'bg'+(_i+1));
+          }, Math.random() * 1200);
+        })(w, i, j, col);
+      }
+    });
+  } else {
+    log('serial-log', 'Using private serial DispatchQueue — all appends serialized', 'ok', '');
+    let ops = [];
+    writers.forEach((w, i) => {
+      for (let j = 0; j < 4; j++) {
+        ops.push({ w, i, j, delay: Math.random() * 1200 });
+      }
+    });
+    ops.sort((a,b) => a.delay - b.delay);
+    let offset = 0;
+    ops.forEach(op => {
+      ;(function(myOp, myOffset) {
+        later(() => {
+          const val = `${myOp.w.slice(-1)}${myOp.j+1}`;
+          const tlQ = tlRecord('Serial Q', 'append(' + val + ')', colors[myOp.i], colors[myOp.i]+'22');
+          serialData.push(val);
+          tlQ();
+          const display = document.getElementById('serial-data-display');
+          const pill = document.createElement('div');
+          pill.className = 'queue-item';
+          pill.style.cssText = `color:${colors[myOp.i]};border-color:${colors[myOp.i]}44`;
+          pill.textContent = val;
+          display.appendChild(pill);
+          document.getElementById('serial-count').textContent = serialData.length;
+          log('serial-log', `queue.async { append("${val}") } — serialized safely`, 'ok', 'bg'+(myOp.i+1));
+        }, myOffset * 220 + 100);
+      })(op, offset);
+      offset++;
+    });
+  }
+}
+
+// ── async/await Scene ──────────────────────────────────────────────────────
+
+function asyncReset() {
+  clearAllTimers();
+  document.getElementById('async-pool').innerHTML = '';
+  document.getElementById('async-main').innerHTML = '<div class="task-block" style="background:var(--teal-dim);color:var(--teal);border:1px solid rgba(45,212,168,.2)"><div class="task-dot" style="background:var(--teal)"></div>UI idle — ready</div>';
+  clearLog('async-log');
+}
+
+function asyncRun() {
+  asyncReset();
+  tlClear('asyncawait');
+  tlAnimate('asyncawait', scaled(3500));
+  const pool = document.getElementById('async-pool');
+  const mainEl = document.getElementById('async-main');
+
+  log('async-log', 'Task { await loadProfile() } started', '', 'main');
+
+  later(() => {
+    const t1 = makeTask('Task: loadProfile() running', 'var(--main)', 'var(--main-dim)', 'rgba(79,142,247,.25)');
+    pool.appendChild(t1);
+    log('async-log', 'Running on cooperative pool thread', '', 'bg');
+    const tlLoad = tlRecord('Coop Pool', 'loadProfile()', 'var(--main)', 'var(--main-dim)');
+
+    later(() => {
+      tlLoad();
+      t1.innerHTML = '<div class="task-dot" style="background:var(--main)"></div>await fetchFromAPI() — SUSPENDED';
+      t1.style.opacity = '.5';
+      log('async-log', 'await fetchFromAPI() — thread released to pool (not blocked!)', 'ok', 'bg');
+      const tlFetch = tlRecord('Coop Pool', 'await fetchFromAPI()', 'var(--main)', 'var(--main-dim)');
+
+      const t2 = makeTask('Task: other work runs here', 'var(--purple)', 'var(--purple-dim)', 'rgba(167,139,250,.25)');
+      pool.appendChild(t2);
+      log('async-log', 'Pool thread reused for another task while first is suspended', 'ok', 'bg');
+      const tlOther = tlRecord('Coop Pool', 'other work (reuse)', 'var(--purple)', 'var(--purple-dim)');
+
+      later(() => {
+        tlOther();
+        t2.style.opacity = '.4'; t2.classList.remove('task-running');
+        t1.style.opacity = '1';
+        t1.innerHTML = '<div class="task-dot" style="background:var(--main)"></div>fetchFromAPI() resumed — got data';
+        t1.classList.add('task-running');
+        log('async-log', 'fetchFromAPI() returned — task resumes on pool', 'ok', 'bg');
+
+        later(() => {
+          tlFetch();
+          t1.style.opacity = '.4'; t1.classList.remove('task-running');
+          t1.innerHTML = '<div class="task-dot" style="background:var(--main)"></div>await MainActor.run { } — hopping...';
+          const tlMainActor = tlRecord('@MainActor', 'label.text = name', 'var(--teal)', 'var(--teal-dim)');
+
+          const mainUpdate = makeTask('@MainActor: label.text = name ✓', 'var(--teal)', 'var(--teal-dim)', 'rgba(45,212,168,.25)');
+          mainEl.innerHTML = '';
+          mainEl.appendChild(mainUpdate);
+          log('async-log', 'MainActor.run { } — executing on main thread', 'ok', 'main');
+
+          later(() => {
+            tlMainActor();
+            mainUpdate.classList.remove('task-running');
+            log('async-log', 'UI updated safely — all done!', 'ok', 'main');
+          }, 600);
+        }, 700);
+      }, 900);
+    }, 700);
+  }, 300);
+}
+
+// ── Combine Scene ──────────────────────────────────────────────────────────
+
+function combineReset() {
+  clearAllTimers();
+  document.getElementById('combine-pipeline').innerHTML = '';
+  document.getElementById('combine-thread-label').textContent = '// thread: —';
+  clearLog('combine-log');
+}
+
+function combinePipeStep(label, color, dim, border, threadNote) {
+  return { label, color, dim, border, threadNote };
+}
+
+function runCombinePipeline(steps) {
+  const pipelineEl = document.getElementById('combine-pipeline');
+  pipelineEl.innerHTML = '';
+  let delay = 0;
+  steps.forEach((step, i) => {
+    later(() => {
+      if (i > 0) {
+        const arr = document.createElement('span');
+        arr.style.cssText = 'color:var(--text3);font-size:14px;';
+        arr.textContent = '→';
+        pipelineEl.appendChild(arr);
+      }
+      const el = makeTask(step.label, step.color, step.dim, step.border);
+      pipelineEl.appendChild(el);
+      document.getElementById('combine-thread-label').textContent = `// thread: ${step.threadNote}`;
+      log('combine-log', `${step.label} — ${step.threadNote}`, step.threadNote.includes('main') ? 'ok' : '', '');
+      later(() => { el.classList.remove('task-running'); el.style.opacity = '.7'; }, 600);
+    }, delay);
+    delay += 750;
+  });
+}
+
+function combineRun() {
+  combineReset();
+  tlClear('combine');
+  tlAnimate('combine', scaled(4500));
+  log('combine-log', 'Publisher emitted — running correct pipeline', 'ok', '');
+  runCombinePipeline([
+    combinePipeStep('publisher.sink', 'var(--main)', 'var(--main-dim)', 'rgba(79,142,247,.25)', 'DispatchQueue.global (subscribe)'),
+    combinePipeStep('.subscribe(on: .global)', 'var(--main)', 'var(--main-dim)', 'rgba(79,142,247,.25)', 'DispatchQueue.global'),
+    combinePipeStep('.map { parse() }', 'var(--purple)', 'var(--purple-dim)', 'rgba(167,139,250,.25)', 'DispatchQueue.global (background)'),
+    combinePipeStep('.receive(on: .main)', 'var(--amber)', 'var(--amber-dim)', 'rgba(245,166,35,.25)', 'hopping to main...'),
+    combinePipeStep('.sink { label.text = $0 }', 'var(--teal)', 'var(--teal-dim)', 'rgba(45,212,168,.25)', 'DispatchQueue.main ✓'),
+  ]);
+}
+
+function combineBadRun() {
+  combineReset();
+  tlClear('combine');
+  tlAnimate('combine', scaled(3000));
+  log('combine-log', 'Publisher emitted — missing receive(on: .main)!', 'warn', '');
+  runCombinePipeline([
+    combinePipeStep('publisher.sink', 'var(--main)', 'var(--main-dim)', 'rgba(79,142,247,.25)', 'DispatchQueue.global'),
+    combinePipeStep('.map { parse() }', 'var(--purple)', 'var(--purple-dim)', 'rgba(167,139,250,.25)', 'DispatchQueue.global (background)'),
+    combinePipeStep('.sink { label.text = $0 } ⚠', 'var(--red)', 'var(--red-dim)', 'rgba(240,92,92,.25)', 'DispatchQueue.global (WRONG — UI on bg!)'),
+  ]);
+  later(() => {
+    log('combine-log', 'VIOLATION: UILabel.text called from background thread!', 'error', '');
+    log('combine-log', 'Fix: add .receive(on: DispatchQueue.main) before .sink', 'warn', '');
+  }, 2500);
+}
+
+// ── Actor Reentrancy ──────────────────────────────────────────────────────
+
+function reentrancyReset() {
+  clearAllTimers();
+  document.getElementById('reent-cache-value').textContent = 'nil';
+  document.getElementById('reent-loading-value').textContent = 'false';
+  document.getElementById('reent-tasks').innerHTML = '';
+  document.getElementById('reent-warning-area').innerHTML = '';
+  clearLog('reent-log');
+}
+
+function reentrancyDemo() {
+  reentrancyReset();
+  tlClear('reentrancy');
+  tlAnimate('reentrancy', scaled(2500));
+  let isLoading = false, data = null;
+  const tasksEl = document.getElementById('reent-tasks');
+
+  log('reent-log', 'Two tasks call buggyLoad() simultaneously', 'warn', '');
+
+  // Task 1
+  later(() => {
+    const t1 = document.createElement('div');
+    t1.className = 'actor-task';
+    t1.style.borderColor = 'rgba(79,142,247,.4)';
+    t1.innerHTML = '<div class="task-dot" style="background:var(--main)"></div><span style="color:var(--main)">Task-1</span> buggyLoad() — isLoading=false, proceed';
+    tasksEl.appendChild(t1);
+    log('reent-log', 'Task-1: isLoading=false → sets isLoading=true, begins await', '', 'bg');
+    isLoading = true;
+    document.getElementById('reent-loading-value').textContent = 'true';
+    const tlT1 = tlRecord('Task-1', 'buggyLoad() await…', 'var(--main)', 'var(--main-dim)');
+
+    // Task 2 enters during Task 1's await
+    later(() => {
+      const t2 = document.createElement('div');
+      t2.className = 'actor-task';
+      t2.style.borderColor = 'rgba(167,139,250,.4)';
+      t2.innerHTML = '<div class="task-dot" style="background:var(--purple)"></div><span style="color:var(--purple)">Task-2</span> buggyLoad() — isLoading=true → returns early';
+      tasksEl.appendChild(t2);
+      log('reent-log', 'Task-2 enters during Task-1 suspension — sees isLoading=true, exits', 'warn', 'bg');
+      const tlT2 = tlRecord('Task-2', 'enters + exits', 'var(--purple)', 'var(--purple-dim)');
+      tlT2();
+
+      later(() => {
+        tlT1();
+        t1.innerHTML = '<div class="task-dot" style="background:var(--main)"></div><span style="color:var(--main)">Task-1</span> resumed — sets data = "loaded"';
+        data = '"loaded"';
+        isLoading = false;
+        document.getElementById('reent-cache-value').textContent = '"loaded"';
+        document.getElementById('reent-loading-value').textContent = 'false';
+        log('reent-log', 'Task-1 resumed — data set. But if another task mutated first, invariant broken!', 'warn', 'bg');
+
+        document.getElementById('reent-warning-area').innerHTML = `
+          <div class="warning-box">
+            <div class="warning-icon">⚠</div>
+            <div>
+              <div class="warning-title">Actor reentrancy: state checked before await may be stale after</div>
+              <div class="warning-body">Task-1 checked <code style="font-family:var(--mono);font-size:11px">isLoading=false</code> and set it to true. But while it awaited, Task-2 could enter. After Task-1 resumes, any assumption it made before the <code style="font-family:var(--mono);font-size:11px">await</code> may be wrong. Always re-check actor state after every <code style="font-family:var(--mono);font-size:11px">await</code>.</div>
+            </div>
+          </div>`;
+      }, 900);
+    }, 500);
+  }, 200);
+}
+
+function reentrancyFix() {
+  reentrancyReset();
+  tlClear('reentrancy');
+  tlAnimate('reentrancy', scaled(2200));
+  let isLoading = false, data = null;
+  const tasksEl = document.getElementById('reent-tasks');
+
+  log('reent-log', 'Two tasks call safeLoad() — re-checks state after await', 'ok', '');
+
+  later(() => {
+    const t1 = document.createElement('div');
+    t1.className = 'actor-task';
+    t1.style.borderColor = 'rgba(45,212,168,.4)';
+    t1.innerHTML = '<div class="task-dot" style="background:var(--teal)"></div><span style="color:var(--teal)">Task-1</span> safeLoad() — guard data==nil && !isLoading → proceed';
+    tasksEl.appendChild(t1);
+    isLoading = true;
+    document.getElementById('reent-loading-value').textContent = 'true';
+    log('reent-log', 'Task-1: guards pass, begins await fetchData()', 'ok', 'bg');
+
+    later(() => {
+      const t2 = document.createElement('div');
+      t2.className = 'actor-task';
+      t2.style.borderColor = 'rgba(45,212,168,.4)';
+      t2.innerHTML = '<div class="task-dot" style="background:var(--teal)"></div><span style="color:var(--teal)">Task-2</span> safeLoad() — isLoading=true → early exit';
+      tasksEl.appendChild(t2);
+      log('reent-log', 'Task-2: sees isLoading=true → exits cleanly', 'ok', 'bg');
+
+      later(() => {
+        t1.innerHTML = '<div class="task-dot" style="background:var(--teal)"></div><span style="color:var(--teal)">Task-1</span> resumed — re-check: data==nil ✓ → set data';
+        data = '"loaded"';
+        isLoading = false;
+        document.getElementById('reent-cache-value').textContent = '"loaded"';
+        document.getElementById('reent-loading-value').textContent = 'false';
+        log('reent-log', 'Task-1 resumed — re-checked data==nil, safe to assign. No reentrancy bug!', 'ok', 'bg');
+      }, 900);
+    }, 500);
+  }, 200);
+}
+
+
+// ── DispatchGroup Scene ──────────────────────────────────────────────────
+
+const DG_APIS = [
+  { id:'profile',  label:'fetchUserProfile()',  color:'var(--main)',   dim:'var(--main-dim)',   dur:800  },
+  { id:'balance',  label:'fetchBalance()',       color:'var(--teal)',   dim:'var(--teal-dim)',   dur:500  },
+  { id:'quota',    label:'fetchDataQuota()',     color:'var(--purple)', dim:'var(--purple-dim)', dur:1100 },
+  { id:'promos',   label:'fetchPromos()',        color:'var(--amber)',  dim:'var(--amber-dim)',  dur:650  },
+];
+
+function dgReset() {
+  clearAllTimers();
+  document.getElementById('dg-requests').innerHTML = '';
+  document.getElementById('dg-notify-container').style.display = 'none';
+  clearLog('dg-log');
+}
+
+function dgRun() {
+  dgReset();
+  tlClear('dispatchgroup');
+  tlAnimate('dispatchgroup', scaled(2500));
+  const reqEl = document.getElementById('dg-requests');
+  let done = 0;
+
+  log('dg-log', 'group.enter() × 4 — dispatching dashboard requests', '', 'main');
+
+  DG_APIS.forEach(api => {
+    const box = document.createElement('div');
+    box.className = 'thread-container';
+    box.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:${api.color}">●</span> ${api.label}</div><span class="status-pill" id="dg-${api.id}-st" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">fetching…</span></div><div class="thread-track" id="dg-${api.id}-track" style="min-height:44px"></div>`;
+    reqEl.appendChild(box);
+
+    const el = makeTask(api.label, api.color, api.dim, api.color + '44');
+    document.getElementById(`dg-${api.id}-track`).appendChild(el);
+    log('dg-log', `group.enter() → ${api.label} dispatched`, '', 'bg');
+    const tlDone = tlRecord(api.label.replace('()', ''), 'fetching', api.color, api.dim);
+
+    later(() => {
+      tlDone();
+      el.classList.remove('task-running'); el.style.opacity = '.4';
+      el.innerHTML = `<div class="task-dot" style="background:${api.color}"></div>${api.label} ✓`;
+      document.getElementById(`dg-${api.id}-st`).innerHTML = pill('done ✓', api.dim, api.color);
+      log('dg-log', `${api.label} → group.leave()`, 'ok', 'bg');
+      done++;
+      if (done === DG_APIS.length) {
+        later(() => {
+          document.getElementById('dg-notify-container').style.display = 'block';
+          const notifyEl = makeTask('refreshDashboard() — all data ready ✓', 'var(--teal)', 'var(--teal-dim)', 'rgba(80,250,123,.3)');
+          document.getElementById('dg-notify-track').appendChild(notifyEl);
+          document.getElementById('dg-notify-status').innerHTML = pill('fired ✓', 'var(--teal-dim)', 'var(--teal)');
+          tlRecord('group.notify(.main)', 'refreshDashboard()', 'var(--teal)', 'var(--teal-dim)')();
+          log('dg-log', 'group.notify fired — all 4 requests complete, updating UI', 'ok', 'main');
+        }, scaled(120));
+      }
+    }, scaled(api.dur));
+  });
+}
+
+// ── DispatchSemaphore Scene ──────────────────────────────────────────────
+
+let semActive = 0;
+function semReset() {
+  clearAllTimers(); semActive = 0;
+  document.getElementById('sem-uploads').innerHTML = '';
+  document.getElementById('sem-active').textContent = '0';
+  document.getElementById('sem-active-bar').style.width = '0%';
+  clearLog('sem-log');
+}
+
+function semRun() {
+  semReset();
+  const limit = parseInt(document.getElementById('sem-limit').value);
+  document.getElementById('sem-max-label').textContent = limit;
+  tlClear('semaphore');
+  tlAnimate('semaphore', scaled(5000));
+
+  const photos = Array.from({length:8}, (_,i) => ({
+    id: i+1, size: (0.8 + Math.random()*3.2).toFixed(1) + 'MB',
+    dur: scaled(600 + Math.random()*1400)
+  }));
+
+  const uploadEl = document.getElementById('sem-uploads');
+  photos.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'thread-container';
+    row.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:var(--text3)">●</span> photo_${p.id}.jpg (${p.size})</div><span class="status-pill" id="sem-ph-${p.id}" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">queued</span></div><div class="thread-track" id="sem-tr-${p.id}" style="min-height:40px"><span style="color:var(--text3);font-size:11px;font-family:var(--mono)">// waiting for slot…</span></div>`;
+    uploadEl.appendChild(row);
+  });
+
+  // Simulate semaphore token scheduling
+  let queue = [...photos];
+  let running = 0;
+  let startTimes = {};
+  startTimes[1] = 0;
+
+  function tryStart() {
+    while (running < limit && queue.length > 0) {
+      const p = queue.shift();
+      running++;
+      semActive = running;
+      document.getElementById('sem-active').textContent = running;
+      document.getElementById('sem-active-bar').style.width = (running/limit*100) + '%';
+
+      const track = document.getElementById('sem-tr-' + p.id);
+      const st = document.getElementById('sem-ph-' + p.id);
+      track.innerHTML = '';
+      const el = makeTask(`uploading… (${p.size})`, 'var(--purple)', 'var(--purple-dim)', 'rgba(189,147,249,.3)');
+      track.appendChild(el);
+      st.innerHTML = pill('uploading', 'var(--purple-dim)', 'var(--purple)');
+      log('sem-log', `photo_${p.id}.jpg — semaphore.wait() acquired slot, uploading`, '', 'bg');
+      const tlUp = tlRecord(`photo_${p.id}`, 'uploading', 'var(--purple)', 'var(--purple-dim)');
+
+      later(() => {
+        tlUp();
+        running--;
+        semActive = running;
+        document.getElementById('sem-active').textContent = running;
+        document.getElementById('sem-active-bar').style.width = (running/limit*100)+'%';
+        el.classList.remove('task-running'); el.style.opacity = '.4';
+        el.innerHTML = `<div class="task-dot" style="background:var(--teal)"></div>uploaded ✓`;
+        st.innerHTML = pill('done ✓', 'var(--teal-dim)', 'var(--teal)');
+        log('sem-log', `photo_${p.id}.jpg — upload done, semaphore.signal()`, 'ok', 'bg');
+        tryStart();
+      }, p.dur);
+    }
+  }
+  later(tryStart, 100);
+}
+
+// ── TaskGroup Scene ──────────────────────────────────────────────────────
+
+const TG_LOCALES = [
+  { locale:'en-US', label:'English',    color:'var(--main)',   dim:'var(--main-dim)',   dur:700  },
+  { locale:'id-ID', label:'Indonesian', color:'var(--teal)',   dim:'var(--teal-dim)',   dur:450  },
+  { locale:'ms-MY', label:'Malay',      color:'var(--purple)', dim:'var(--purple-dim)', dur:900  },
+  { locale:'th-TH', label:'Thai',       color:'var(--amber)',  dim:'var(--amber-dim)',  dur:600  },
+  { locale:'vi-VN', label:'Vietnamese', color:'var(--red)',    dim:'var(--red-dim)',    dur:750  },
+  { locale:'zh-CN', label:'Chinese',    color:'var(--pink)',   dim:'rgba(255,121,198,.13)', dur:500 },
+];
+
+function tgReset() {
+  clearAllTimers();
+  document.getElementById('tg-tasks').innerHTML = '';
+  document.getElementById('tg-result').innerHTML = '';
+  clearLog('tg-log');
+}
+
+function tgRun() {
+  tgReset();
+  tlClear('taskgroup');
+  tlAnimate('taskgroup', scaled(1800));
+  log('tg-log', 'withTaskGroup { } — spawning 6 child tasks in parallel', '', 'main');
+
+  const tasksEl = document.getElementById('tg-tasks');
+  const resultEl = document.getElementById('tg-result');
+  let finished = 0;
+
+  TG_LOCALES.forEach(loc => {
+    const box = document.createElement('div');
+    box.className = 'thread-container';
+    box.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:${loc.color}">●</span> ${loc.locale}</div></div><div class="thread-track" id="tg-${loc.locale}-track" style="min-height:44px"></div>`;
+    tasksEl.appendChild(box);
+
+    const el = makeTask(loc.label, loc.color, loc.dim, loc.color + '44');
+    document.getElementById(`tg-${loc.locale}-track`).appendChild(el);
+    log('tg-log', `group.addTask { fetchBundle("${loc.locale}") }`, '', 'bg');
+    const tlDone = tlRecord(loc.locale, 'fetchBundle', loc.color, loc.dim);
+
+    later(() => {
+      tlDone();
+      el.classList.remove('task-running'); el.style.opacity = '.55';
+      el.innerHTML = `<div class="task-dot" style="background:${loc.color}"></div>${loc.label} ✓`;
+      log('tg-log', `"${loc.locale}" bundle received — for await in group`, 'ok', 'bg');
+      finished++;
+
+      const pill = document.createElement('div');
+      pill.className = 'queue-item';
+      pill.style.cssText = `color:${loc.color};border-color:${loc.color}44;animation:slideIn .25s ease`;
+      pill.textContent = loc.locale;
+      resultEl.appendChild(pill);
+
+      if (finished === TG_LOCALES.length) {
+        later(() => {
+          const done = document.createElement('div');
+          done.style.cssText = 'width:100%;font-size:12px;font-family:var(--mono);color:var(--teal);margin-top:6px';
+          done.textContent = '→ all 6 bundles merged, cache populated ✓';
+          resultEl.appendChild(done);
+          log('tg-log', 'TaskGroup complete — all bundles merged into SDK cache', 'ok', 'main');
+        }, scaled(100));
+      }
+    }, scaled(loc.dur));
+  });
+}
+
+// ── Task Cancellation Scene ──────────────────────────────────────────────
+
+let tcTask = null;
+let tcRunning = false;
+function tcReset() {
+  clearAllTimers(); tcTask = null; tcRunning = false;
+  document.getElementById('tc-state').textContent = 'idle';
+  document.getElementById('tc-state').style.color = 'var(--teal)';
+  document.getElementById('tc-checkpoint').textContent = '—';
+  document.getElementById('tc-steps').innerHTML = '';
+  clearLog('tc-log');
+}
+
+function tcCancel() {
+  if (!tcRunning) return;
+  tcRunning = false;
+  document.getElementById('tc-state').textContent = 'cancelled';
+  document.getElementById('tc-state').style.color = 'var(--red)';
+  log('tc-log', 'searchTask.cancel() — user navigated away', 'error', 'main');
+}
+
+function tcAddStep(label, state) {
+  const el = document.createElement('div');
+  el.className = 'actor-task';
+  const stCol = state === 'ok' ? 'var(--teal)' : state === 'cancel' ? 'var(--red)' : 'var(--text3)';
+  el.style.cssText = `border-color:${stCol}44`;
+  const icon = state === 'ok' ? '✓' : state === 'cancel' ? '✗' : '…';
+  el.innerHTML = `<div class="task-dot" style="background:${stCol}"></div><span style="color:${stCol}">${icon}</span> <span style="color:var(--text2)">${label}</span>`;
+  document.getElementById('tc-steps').appendChild(el);
+}
+
+function tcRun() {
+  tcReset();
+  tcRunning = true;
+  tlClear('taskcancellation');
+  tlAnimate('taskcancellation', scaled(3500));
+
+  const STEPS = [
+    { label:'Checkpoint 1: guard !isCancelled', ms:200,  phase:'pre-network' },
+    { label:'await searchAPI(query: "paket")', ms:800,  phase:'network' },
+    { label:'Checkpoint 2: checkCancellation()', ms:1200, phase:'post-network' },
+    { label:'parse(results)', ms:400,  phase:'parse' },
+    { label:'Checkpoint 3: guard !isCancelled', ms:300,  phase:'pre-ui' },
+    { label:'MainActor: updateResults()', ms:200,  phase:'ui' },
+  ];
+
+  document.getElementById('tc-state').textContent = 'running';
+  document.getElementById('tc-state').style.color = 'var(--main)';
+  log('tc-log', 'Task { await searchAPI("paket data") } started', '', 'main');
+
+  let cumulativeMs = 0;
+  const tlTask = tlRecord('searchTask', 'running', 'var(--main)', 'var(--main-dim)');
+
+  STEPS.forEach((step, i) => {
+    cumulativeMs += step.ms;
+    ;(function(s, delay, idx) {
+      later(() => {
+        if (!tcRunning && s.phase !== 'pre-network') {
+          tcAddStep(s.label, 'cancel');
+          document.getElementById('tc-checkpoint').textContent = 'cancelled at: ' + s.label;
+          if (idx === STEPS.findIndex(x => !tcRunning) + 1) {
+            tlTask();
+            tlRecord('searchTask', 'CANCELLED', 'var(--red)', 'var(--red-dim)')();
+          }
+          log('tc-log', `${s.label} → Task.isCancelled = true, stopping`, 'error', 'bg');
+          return;
+        }
+        tcAddStep(s.label, s.phase === 'ui' ? 'ok' : 'ok');
+        document.getElementById('tc-checkpoint').textContent = s.label;
+        const isCheckpoint = s.phase.startsWith('pre') || s.phase === 'post-network';
+        if (isCheckpoint) {
+          tlRecord('Checkpoints', s.label.split(':')[0], 'var(--amber)', 'var(--amber-dim)')();
+        } else {
+          tlRecord('Work', s.label, 'var(--main)', 'var(--main-dim)')();
+        }
+        log('tc-log', `${s.label} — isCancelled=false, continue`, 'ok', 'bg');
+        if (idx === STEPS.length - 1) {
+          tlTask();
+          document.getElementById('tc-state').textContent = 'completed ✓';
+          document.getElementById('tc-state').style.color = 'var(--teal)';
+          log('tc-log', 'Search complete — UI updated on main thread', 'ok', 'main');
+        }
+      }, cumulativeMs - step.ms + step.ms);
+    })(step, cumulativeMs, i);
+  });
+}
+
+// ── NSLock / os_unfair_lock Scene ─────────────────────────────────────────
+
+let lockBuffer = [];
+let lockMode = null;
+function lockReset() {
+  clearAllTimers(); lockBuffer = [];
+  document.getElementById('lock-writers').innerHTML = '';
+  document.getElementById('lock-buffer').innerHTML = '';
+  document.getElementById('lock-count').textContent = '0';
+  document.getElementById('lock-state-icon').textContent = '🔓';
+  document.getElementById('lock-state-label').textContent = 'unlocked';
+  document.getElementById('lock-warning-area').innerHTML = '';
+  clearLog('lock-log');
+}
+
+function lockDemo(mode) {
+  lockReset(); lockMode = mode;
+  tlClear('locks');
+  tlAnimate('locks', scaled(2500));
+
+  const writers = ['SDK-Thread-1','SDK-Thread-2','SDK-Thread-3'];
+  const colors  = ['var(--main)','var(--purple)','var(--amber)'];
+  const dims    = ['var(--main-dim)','var(--purple-dim)','var(--amber-dim)'];
+  const writersEl = document.getElementById('lock-writers');
+
+  writers.forEach((w, i) => {
+    const box = document.createElement('div');
+    box.className = 'thread-container';
+    box.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:${colors[i]}">●</span> ${w}</div></div><div class="thread-track" id="lock-w${i}" style="min-height:40px"></div>`;
+    writersEl.appendChild(box);
+  });
+
+  log('lock-log', mode === 'nolock' ? 'No lock — concurrent writes to analytics buffer' : `${mode === 'nslock' ? 'NSLock' : 'os_unfair_lock'} — serialized writes`, mode === 'nolock' ? 'warn' : 'ok', '');
+
+  let serialOffset = 0;
+  writers.forEach((w, i) => {
+    for (let j = 0; j < 4; j++) {
+      ;(function(wi, wj, wcol, wdim, wname) {
+        const baseDelay = mode === 'nolock' ? Math.random() * 1200 : (serialOffset++ * 180 + wi * 60);
+        later(() => {
+          const track = document.getElementById('lock-w' + wi);
+          const el = makeTask(`track("event_${wi*4+wj+1}")`, wcol, wdim, wcol + '44');
+          track.innerHTML = '';
+          track.appendChild(el);
+
+          if (mode !== 'nolock') {
+            document.getElementById('lock-state-icon').textContent = '🔒';
+            document.getElementById('lock-state-label').textContent = `locked by ${wname}`;
+            tlRecord(wname, 'track(event)', wcol, wdim);
+          } else {
+            tlRecord(wname, 'RACE write', wcol, wdim);
+          }
+
+          later(() => {
+            el.classList.remove('task-running'); el.style.opacity = '.4';
+            const evName = `event_${wi*4+wj+1}`;
+            const corrupt = mode === 'nolock' && Math.random() < 0.3;
+
+            if (corrupt) {
+              log('lock-log', `${wname}: CORRUPT WRITE — race on analyticsEvents`, 'error', 'bg');
+            } else {
+              lockBuffer.push(evName);
+              document.getElementById('lock-count').textContent = lockBuffer.length;
+              const pill = document.createElement('div');
+              pill.className = 'queue-item';
+              pill.style.cssText = `color:${wcol};border-color:${wcol}44;font-size:10px;animation:slideIn .2s ease`;
+              pill.textContent = evName;
+              document.getElementById('lock-buffer').appendChild(pill);
+              if (mode !== 'nolock') document.getElementById('lock-state-icon').textContent = '🔓';
+              if (mode !== 'nolock') document.getElementById('lock-state-label').textContent = 'unlocked';
+              log('lock-log', `${wname}: ${mode !== 'nolock' ? 'lock.lock() → ' : ''}append(${evName})${mode !== 'nolock' ? ' → lock.unlock()' : ''}`, 'ok', 'bg');
+            }
+
+            if (mode === 'nolock' && corrupt) {
+              document.getElementById('lock-warning-area').innerHTML = `<div class="warning-box"><div class="warning-icon">⚠</div><div><div class="warning-title">Data corruption — concurrent array mutation</div><div class="warning-body">Two threads wrote simultaneously — an event was lost or the array structure corrupted. In production: crash (EXC_BAD_ACCESS) or silently dropped analytics events.</div></div></div>`;
+            }
+          }, scaled(160));
+        }, scaled(baseDelay));
+      })(i, j, colors[i], dims[i], w);
+    }
+  });
+}
+
+// ── @Atomic Property Scene ────────────────────────────────────────────────
+
+let atomicRaw = 0, atomicSafe = 0;
+function atomicReset() {
+  clearAllTimers(); atomicRaw = 0; atomicSafe = 0;
+  document.getElementById('raw-val').textContent = '0';
+  document.getElementById('atomic-val').textContent = '0';
+  document.getElementById('raw-expected').textContent = 'expected: 0';
+  document.getElementById('atomic-expected').textContent = 'expected: 0';
+  document.getElementById('atomic-threads').innerHTML = '';
+  clearLog('atomic-log');
+}
+
+function atomicDemo(mode) {
+  atomicReset();
+  tlClear('atomic');
+  tlAnimate('atomic', scaled(2200));
+  const threads = 4;
+  const ops = 8;
+  const expected = threads * ops;
+  document.getElementById('raw-expected').textContent = `expected: ${expected}`;
+  document.getElementById('atomic-expected').textContent = `expected: ${expected}`;
+
+  const colors = ['var(--main)','var(--purple)','var(--teal)','var(--amber)'];
+  const dims   = ['var(--main-dim)','var(--purple-dim)','var(--teal-dim)','var(--amber-dim)'];
+  const threadsEl = document.getElementById('atomic-threads');
+
+  log('atomic-log', mode === 'raw' ? 'var pendingRequests = 0 (not atomic)' : '@Atomic var pendingRequests = 0', mode === 'raw' ? 'warn' : 'ok', '');
+
+  for (let t = 0; t < threads; t++) {
+    const box = document.createElement('div');
+    box.className = 'thread-container';
+    box.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:${colors[t]}">●</span> NetworkCallback-${t+1}</div></div><div class="thread-track" id="at-t${t}" style="min-height:36px"></div>`;
+    threadsEl.appendChild(box);
+
+    for (let o = 0; o < ops; o++) {
+      ;(function(ti, oi, col, dim) {
+        const delay = Math.random() * 1500;
+        later(() => {
+          const track = document.getElementById('at-t' + ti);
+          const el = makeTask('pendingRequests += 1', col, dim, col + '44');
+          track.innerHTML = ''; track.appendChild(el);
+          const tlOp = tlRecord('Thread-'+(ti+1), mode === 'raw' ? 'RACE +1' : 'atomic +1', col, dim);
+
+          const readVal = mode === 'raw' ? atomicRaw : atomicSafe;
+          later(() => {
+            tlOp();
+            el.classList.remove('task-running'); el.style.opacity = '.35';
+            if (mode === 'raw') {
+              const lost = Math.random() < 0.25;
+              if (!lost) atomicRaw = readVal + 1;
+              document.getElementById('raw-val').textContent = atomicRaw;
+              if (lost) log('atomic-log', `Thread-${ti+1}: LOST increment — race condition`, 'error', 'bg');
+            } else {
+              atomicSafe++;
+              document.getElementById('atomic-val').textContent = atomicSafe;
+              if (atomicSafe === expected) log('atomic-log', `All increments serialized — pendingRequests=${atomicSafe} ✓`, 'ok', 'main');
+            }
+          }, scaled(80 + Math.random() * 60));
+        }, delay);
+      })(t, o, colors[t], dims[t]);
+    }
+  }
+}
+
+// ── Sendable Scene ────────────────────────────────────────────────────────
+
+function sendableReset() {
+  clearAllTimers();
+  document.getElementById('sendable-bad-state').innerHTML = '';
+  document.getElementById('sendable-good-state').innerHTML = '';
+  document.getElementById('sendable-warning-area').innerHTML = '';
+  clearLog('sendable-log');
+}
+
+function sendableDemo(mode) {
+  sendableReset();
+  tlClear('sendable');
+  tlAnimate('sendable', scaled(2800));
+
+  if (mode === 'bad') {
+    log('sendable-log', 'Passing class SDKConfig across two actors — shared mutable reference!', 'warn', '');
+
+    let timeout = 30;
+    const badEl = document.getElementById('sendable-bad-state');
+
+    const render = () => {
+      badEl.innerHTML = `timeout = <span style="color:var(--red)">${timeout}</span><br>retries = 3`;
+    };
+    render();
+
+    const tlA1 = tlRecord('NetworkActor', 'read config.timeout', 'var(--main)', 'var(--main-dim)');
+    const tlA2 = tlRecord('CacheActor', 'mutate config.timeout', 'var(--red)', 'var(--red-dim)');
+
+    later(() => {
+      log('sendable-log', 'NetworkActor: reading config.timeout (=30)…', '', 'bg');
+    }, scaled(300));
+
+    later(() => {
+      log('sendable-log', 'CacheActor: config.timeout = 5 — MUTATING shared ref!', 'error', 'bg');
+      timeout = 5;
+      render();
+      tlA2();
+    }, scaled(700));
+
+    later(() => {
+      tlA1();
+      log('sendable-log', 'NetworkActor: config.timeout is now 5 — unexpected mutation!', 'error', 'bg');
+      document.getElementById('sendable-warning-area').innerHTML = `<div class="warning-box"><div class="warning-icon">⚠</div><div><div class="warning-title">Shared mutable state — non-Sendable class passed across actors</div><div class="warning-body">Both actors hold a reference to the same SDKConfig object. CacheActor mutated it while NetworkActor was reading it. Fix: use a struct (value type) — each actor gets its own copy on assignment.</div></div></div>`;
+    }, scaled(1100));
+
+  } else {
+    log('sendable-log', 'Passing struct SDKConfig — each actor receives a copy', 'ok', '');
+
+    const goodEl = document.getElementById('sendable-good-state');
+    goodEl.innerHTML = 'timeout = <span style="color:var(--teal)">30</span><br>retries = 3';
+
+    const tlS1 = tlRecord('NetworkActor', 'copy of config', 'var(--main)', 'var(--main-dim)');
+    const tlS2 = tlRecord('CacheActor', 'own copy of config', 'var(--teal)', 'var(--teal-dim)');
+
+    later(() => {
+      log('sendable-log', 'NetworkActor receives copy: { timeout:30, retries:3 }', 'ok', 'bg');
+    }, scaled(300));
+
+    later(() => {
+      log('sendable-log', 'CacheActor receives own copy: { timeout:30, retries:3 }', 'ok', 'bg');
+    }, scaled(500));
+
+    later(() => {
+      log('sendable-log', 'CacheActor "mutates" its copy — NetworkActor copy unchanged ✓', 'ok', 'bg');
+      goodEl.innerHTML += '<br><span style="color:var(--text3);font-size:11px">// Each actor has independent value</span>';
+      tlS1(); tlS2();
+    }, scaled(1000));
+  }
+}
+
+// ── Priority Inversion Scene ──────────────────────────────────────────────
+
+function piReset() {
+  clearAllTimers();
+  document.getElementById('pi-threads').innerHTML = '';
+  document.getElementById('pi-warning-area').innerHTML = '';
+  clearLog('pi-log');
+}
+
+function piRun() {
+  piReset();
+  tlClear('priorityinversion');
+  tlAnimate('priorityinversion', scaled(4500));
+
+  const threadsEl = document.getElementById('pi-threads');
+
+  const buildThread = (id, label, color) => {
+    const box = document.createElement('div');
+    box.className = 'thread-container';
+    box.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:${color}">●</span> ${label}</div><span class="status-pill" id="pi-${id}-st" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">idle</span></div><div class="thread-track" id="pi-${id}-track" style="min-height:44px"></div>`;
+    threadsEl.appendChild(box);
+  };
+
+  buildThread('bg', '.background — syncTask()', 'var(--text3)');
+  buildThread('hi', '.userInteractive — animationFrame()', 'var(--red)');
+
+  log('pi-log', 'Background task acquires lock first…', 'warn', '');
+  const tlBg = tlRecord('.background', 'holds NSLock', 'var(--text3)', 'var(--bg4)');
+
+  const bgEl = makeTask('syncTask() — holding NSLock', 'var(--text3)', 'var(--bg4)', 'var(--border2)');
+  document.getElementById('pi-bg-track').appendChild(bgEl);
+  document.getElementById('pi-bg-st').innerHTML = pill('running (bg)', 'var(--bg4)', 'var(--text3)');
+
+  later(() => {
+    const hiEl = makeTask('animationFrame() — BLOCKED waiting for lock', 'var(--red)', 'var(--red-dim)', 'rgba(255,85,85,.3)');
+    document.getElementById('pi-hi-track').appendChild(hiEl);
+    document.getElementById('pi-hi-st').innerHTML = pill('BLOCKED', 'var(--red-dim)', 'var(--red)');
+    log('pi-log', '.userInteractive task needs lock — BLOCKED by .background task!', 'error', 'bg');
+    tlRecord('.userInteractive', 'BLOCKED (waiting)', 'var(--red)', 'var(--red-dim)');
+
+    later(() => {
+      log('pi-log', 'FRAME DROP: animation stalled > 16ms — jank visible to user', 'error', 'main');
+      document.getElementById('pi-warning-area').innerHTML = `<div class="warning-box"><div class="warning-icon">⚠</div><div><div class="warning-title">Priority Inversion — high-priority task blocked by low-priority</div><div class="warning-body">The .background task holds a lock the .userInteractive animation needs. The animation frame drops. Without QoS propagation the UI stalls indefinitely. Fix: GCD auto-boosts the waiter's QoS. For Swift Concurrency use actors instead of explicit locks to avoid this entirely.</div></div></div>`;
+
+      later(() => {
+        tlBg();
+        bgEl.classList.remove('task-running'); bgEl.style.opacity = '.4';
+        bgEl.innerHTML = '<div class="task-dot" style="background:var(--text3)"></div>syncTask() done — lock released';
+        document.getElementById('pi-bg-st').innerHTML = pill('done', 'var(--bg4)', 'var(--text3)');
+        log('pi-log', '.background task finished — lock released. QoS elevation resolved inversion.', 'ok', 'bg');
+
+        const hiDone = makeTask('animationFrame() running ✓', 'var(--red)', 'var(--red-dim)', 'rgba(255,85,85,.3)');
+        document.getElementById('pi-hi-track').innerHTML = '';
+        document.getElementById('pi-hi-track').appendChild(hiDone);
+        document.getElementById('pi-hi-st').innerHTML = pill('unblocked ✓', 'var(--teal-dim)', 'var(--teal)');
+        tlRecord('.userInteractive', 'unblocked → running', 'var(--teal)', 'var(--teal-dim)')();
+        log('pi-log', '.userInteractive unblocked — animation resumes (too late for this frame)', 'ok', 'bg');
+      }, scaled(1200));
+    }, scaled(600));
+  }, scaled(600));
+}
+
+function piFix() {
+  piReset();
+  tlClear('priorityinversion');
+  tlAnimate('priorityinversion', scaled(2800));
+
+  const threadsEl = document.getElementById('pi-threads');
+  const buildThread = (id, label, color) => {
+    const box = document.createElement('div');
+    box.className = 'thread-container';
+    box.innerHTML = `<div class="thread-header"><div class="thread-name"><span style="color:${color}">●</span> ${label}</div><span class="status-pill" id="pif-${id}-st" style="background:var(--bg);color:var(--text3);border:1px solid var(--border2)">idle</span></div><div class="thread-track" id="pif-${id}-track" style="min-height:44px"></div>`;
+    threadsEl.appendChild(box);
+  };
+
+  buildThread('bg', '.background — syncTask() [QoS boosted]', 'var(--amber)');
+  buildThread('hi', '.userInteractive — animationFrame()', 'var(--teal)');
+
+  log('pi-log', 'GCD QoS propagation: background task boosted to userInteractive when waiter arrives', 'ok', '');
+
+  const tlBg = tlRecord('.background (boosted)', 'syncTask fast', 'var(--amber)', 'var(--amber-dim)');
+  const bgEl = makeTask('syncTask() [QoS boosted by OS]', 'var(--amber)', 'var(--amber-dim)', 'rgba(255,184,108,.3)');
+  document.getElementById('pif-bg-track').appendChild(bgEl);
+  document.getElementById('pif-bg-st').innerHTML = pill('boosted!', 'var(--amber-dim)', 'var(--amber)');
+
+  later(() => {
+    const hiEl = makeTask('animationFrame() — waiting (short)', 'var(--teal)', 'var(--teal-dim)', 'rgba(80,250,123,.3)');
+    document.getElementById('pif-hi-track').appendChild(hiEl);
+    document.getElementById('pif-hi-st').innerHTML = pill('waiting (brief)', 'var(--teal-dim)', 'var(--teal)');
+    tlRecord('.userInteractive', 'waiting (brief)', 'var(--teal)', 'var(--teal-dim)');
+    log('pi-log', '.userInteractive arrives — OS auto-elevates .background QoS to match', 'ok', 'bg');
+
+    later(() => {
+      tlBg();
+      bgEl.classList.remove('task-running'); bgEl.style.opacity = '.4';
+      bgEl.innerHTML = '<div class="task-dot" style="background:var(--amber)"></div>syncTask() done quickly ✓';
+      document.getElementById('pif-bg-st').innerHTML = pill('done fast', 'var(--teal-dim)', 'var(--teal)');
+      log('pi-log', '.background completed quickly (boosted) — lock released in time', 'ok', 'bg');
+
+      hiEl.innerHTML = '<div class="task-dot" style="background:var(--teal)"></div>animationFrame() on time ✓ — no frame drop!';
+      hiEl.classList.remove('task-running');
+      document.getElementById('pif-hi-st').innerHTML = pill('on time ✓', 'var(--teal-dim)', 'var(--teal)');
+      tlRecord('.userInteractive', 'runs on time ✓', 'var(--teal)', 'var(--teal-dim)')();
+      log('pi-log', 'Animation delivered on time — no jank! QoS propagation resolved inversion.', 'ok', 'main');
+    }, scaled(500));
+  }, scaled(400));
+}
+
+// ── Theme Toggle ─────────────────────────────────────────────────────────
+
+let isDark = true;
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.classList.toggle('light', !isDark);
+  document.getElementById('theme-icon').textContent  = isDark ? '\u2600' : '\u263D';
+  document.getElementById('theme-label').textContent = isDark ? 'Light'  : 'Dark';
+}
+
+// ── Sidebar Toggle (clean) ───────────────────────────────────────────────
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const expandBtn = document.getElementById('expand-btn');
+  const isCollapsed = sidebar.classList.toggle('collapsed');
+  if (expandBtn) {
+    expandBtn.style.display = isCollapsed ? 'flex' : 'none';
+    expandBtn.style.flexShrink = '0';
+  }
+}
+
+
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+// Init QoS scene
+qosReset();
+document.getElementById('code-content').innerHTML = CODES['gcd'];
+
+// ── Init ─────────────────────────────────────────────────────────────────
+qosReset();
+document.getElementById('code-content').innerHTML = CODES['gcd'];
+</script>
+</body>
+</html>
