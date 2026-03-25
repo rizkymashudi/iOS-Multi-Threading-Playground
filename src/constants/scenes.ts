@@ -1,0 +1,171 @@
+import type { SceneMeta, SceneId, NavSection } from '../types/scene'
+
+export const SCENES: Record<SceneId, SceneMeta> = {
+  gcd: {
+    id: 'gcd',
+    title: 'GCD & Queues',
+    badge: 'Fundamental',
+    section: 'Fundamentals',
+    accentColor: 'var(--main)',
+  },
+  mainthread: {
+    id: 'mainthread',
+    title: 'Main Thread Rule',
+    badge: 'Rule #1',
+    section: 'Fundamentals',
+    accentColor: 'var(--teal)',
+  },
+  qos: {
+    id: 'qos',
+    title: 'QoS Classes',
+    badge: 'Performance',
+    section: 'Fundamentals',
+    accentColor: 'var(--purple)',
+  },
+  deadlock: {
+    id: 'deadlock',
+    title: 'Deadlock',
+    badge: 'Pitfall',
+    section: 'Pitfalls',
+    accentColor: 'var(--red)',
+  },
+  race: {
+    id: 'race',
+    title: 'Data Race',
+    badge: 'Pitfall',
+    section: 'Pitfalls',
+    accentColor: 'var(--amber)',
+  },
+  explosion: {
+    id: 'explosion',
+    title: 'Thread Explosion',
+    badge: 'Pitfall',
+    section: 'Pitfalls',
+    accentColor: 'var(--amber)',
+  },
+  barrier: {
+    id: 'barrier',
+    title: 'Dispatch Barrier',
+    badge: 'Sync Pattern',
+    section: 'Synchronization',
+    accentColor: 'var(--purple)',
+  },
+  actor: {
+    id: 'actor',
+    title: 'Swift Actors',
+    badge: 'Modern Swift',
+    section: 'Synchronization',
+    accentColor: 'var(--teal)',
+  },
+  serial: {
+    id: 'serial',
+    title: 'Serial Isolation',
+    badge: 'Sync Pattern',
+    section: 'Synchronization',
+    accentColor: 'var(--green)',
+  },
+  asyncawait: {
+    id: 'asyncawait',
+    title: 'async/await',
+    badge: 'Modern Swift',
+    section: 'Modern Swift',
+    accentColor: 'var(--main)',
+  },
+  combine: {
+    id: 'combine',
+    title: 'Combine Schedulers',
+    badge: 'Reactive',
+    section: 'Modern Swift',
+    accentColor: 'var(--purple)',
+  },
+  reentrancy: {
+    id: 'reentrancy',
+    title: 'Actor Reentrancy',
+    badge: 'Pitfall',
+    section: 'Modern Swift',
+    accentColor: 'var(--red)',
+  },
+  dispatchgroup: {
+    id: 'dispatchgroup',
+    title: 'DispatchGroup',
+    badge: 'Coordination',
+    section: 'Coordination',
+    accentColor: 'var(--main)',
+  },
+  semaphore: {
+    id: 'semaphore',
+    title: 'DispatchSemaphore',
+    badge: 'Coordination',
+    section: 'Coordination',
+    accentColor: 'var(--purple)',
+  },
+  taskgroup: {
+    id: 'taskgroup',
+    title: 'TaskGroup',
+    badge: 'Modern Swift',
+    section: 'Coordination',
+    accentColor: 'var(--teal)',
+  },
+  taskcancellation: {
+    id: 'taskcancellation',
+    title: 'Task Cancellation',
+    badge: 'Modern Swift',
+    section: 'Coordination',
+    accentColor: 'var(--red)',
+  },
+  locks: {
+    id: 'locks',
+    title: 'NSLock & os_unfair_lock',
+    badge: 'Sync Primitive',
+    section: 'Safety & Tools',
+    accentColor: 'var(--amber)',
+  },
+  atomic: {
+    id: 'atomic',
+    title: '@Atomic Property',
+    badge: 'Sync Pattern',
+    section: 'Safety & Tools',
+    accentColor: 'var(--green)',
+  },
+  sendable: {
+    id: 'sendable',
+    title: 'Sendable & Actors',
+    badge: 'Safety',
+    section: 'Safety & Tools',
+    accentColor: 'var(--purple)',
+  },
+  priorityinversion: {
+    id: 'priorityinversion',
+    title: 'Priority Inversion',
+    badge: 'Pitfall',
+    section: 'Safety & Tools',
+    accentColor: 'var(--amber)',
+  },
+}
+
+export const NAV_SECTIONS: { section: NavSection; sceneIds: SceneId[] }[] = [
+  {
+    section: 'Fundamentals',
+    sceneIds: ['gcd', 'mainthread', 'qos'],
+  },
+  {
+    section: 'Pitfalls',
+    sceneIds: ['deadlock', 'race', 'explosion'],
+  },
+  {
+    section: 'Synchronization',
+    sceneIds: ['barrier', 'actor', 'serial'],
+  },
+  {
+    section: 'Modern Swift',
+    sceneIds: ['asyncawait', 'combine', 'reentrancy'],
+  },
+  {
+    section: 'Coordination',
+    sceneIds: ['dispatchgroup', 'semaphore', 'taskgroup', 'taskcancellation'],
+  },
+  {
+    section: 'Safety & Tools',
+    sceneIds: ['locks', 'atomic', 'sendable', 'priorityinversion'],
+  },
+]
