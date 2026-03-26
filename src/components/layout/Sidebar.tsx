@@ -8,7 +8,7 @@ export default function Sidebar() {
   const setScene = useSceneStore((s) => s.setScene)
 
   return (
-    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`} aria-label="Scene navigation">
       <div className="sidebar-inner">
         <div className="sidebar-header">
           <div>
@@ -19,7 +19,12 @@ export default function Sidebar() {
               Playground
             </div>
           </div>
-          <button className="sidebar-toggle" onClick={toggleSidebar} title="Collapse sidebar">
+          <button
+            className="sidebar-toggle"
+            onClick={toggleSidebar}
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+          >
             &#x276E;
           </button>
         </div>
@@ -36,8 +41,13 @@ export default function Sidebar() {
                     onClick={() => setScene(id)}
                     role="button"
                     tabIndex={0}
+                    aria-label={`Navigate to ${scene.title}`}
+                    aria-current={activeSceneId === id ? 'page' : undefined}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') setScene(id)
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setScene(id)
+                      }
                     }}
                   >
                     <div className="nav-dot" style={{ background: scene.accentColor }} />

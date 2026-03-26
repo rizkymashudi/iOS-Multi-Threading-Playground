@@ -20,6 +20,7 @@ export default function Topbar() {
         className={`expand-btn${sidebarCollapsed ? ' visible' : ''}`}
         onClick={toggleSidebar}
         title="Expand sidebar"
+        aria-label="Expand sidebar"
       >
         &#x276F;
       </button>
@@ -43,10 +44,16 @@ export default function Topbar() {
           step="0.25"
           value={speed}
           onChange={(e) => setSpeed(parseFloat(e.target.value))}
+          aria-label={`Simulation speed: ${speed}x`}
         />
         <span className="speed-val">{speed}&times;</span>
       </div>
-      <button className="theme-toggle" onClick={toggleTheme} title="Toggle light/dark mode">
+      <button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        title="Toggle light/dark mode"
+        aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+      >
         <span className="theme-icon">{isDark ? '\u2600' : '\u263D'}</span>
         <span>{isDark ? 'Light' : 'Dark'}</span>
       </button>
