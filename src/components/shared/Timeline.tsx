@@ -53,7 +53,9 @@ export default function Timeline({ events, elapsedMs, totalMs }: TimelineProps) 
         <div className="tl-canvas" style={{ position: 'relative' }}>
           <div
             className="tl-playhead"
-            style={{ left: `calc(106px + (100% - 106px) * ${phPct / 100})` }}
+            style={{
+              left: `calc(var(--tl-label-w) + (100% - var(--tl-label-w)) * ${phPct / 100})`,
+            }}
           />
           {lanes.map((lane) => (
             <div className="tl-lane" key={lane.name}>
