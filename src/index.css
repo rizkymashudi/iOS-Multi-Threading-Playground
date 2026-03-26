@@ -428,6 +428,29 @@ body {
   color: var(--text3);
 }
 
+.code-panel-close {
+  display: none;
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.code-panel-close:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+
+.code-panel-overlay {
+  display: none;
+}
+
 .code-scroll {
   flex: 1;
   overflow-y: auto;
@@ -1318,11 +1341,23 @@ input[type='range']:focus-visible {
     transform: translateX(0);
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
   }
+  .code-panel-close {
+    display: flex;
+  }
+  .code-panel-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.45);
+  }
 
-  /* Sim area: adjust padding */
+  /* Sim area: scrollable and adjusted padding */
   .sim-area {
     padding: 12px 10px;
     gap: 10px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Buttons: smaller on mobile */
