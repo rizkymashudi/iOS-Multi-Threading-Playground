@@ -190,10 +190,10 @@ export default function AsyncAwaitScene() {
       </div>
 
       <InfoCard>
-        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>async/await</code> uses a{' '}
-        <strong>cooperative thread pool</strong> — tasks suspend at{' '}
-        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>await</code> without blocking a
-        thread. The thread is freed for other work while waiting.{' '}
+        <strong>Real world:</strong> A weather app fetches forecast data with{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>async/await</code> — the thread
+        suspends at the network call instead of blocking. The cooperative thread pool reuses that
+        thread for other work.{' '}
         <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>@MainActor</code> guarantees UI
         hops automatically.
       </InfoCard>

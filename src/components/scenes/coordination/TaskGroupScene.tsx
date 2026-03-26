@@ -81,7 +81,7 @@ export default function TaskGroupScene() {
         if (finishedRef.current === TG_LOCALES.length) {
           later(() => {
             setAllDone(true)
-            log('taskgroup', 'TaskGroup complete — all bundles merged into SDK cache', 'ok', 'main')
+            log('taskgroup', 'TaskGroup complete — all bundles merged into cache', 'ok', 'main')
           }, 100)
         }
       }, loc.dur)
@@ -100,7 +100,7 @@ export default function TaskGroupScene() {
       </div>
 
       <InfoCard>
-        <strong>Real world:</strong> TelkomselLocalization SDK needs to fetch 6 language bundles in
+        <strong>Real world:</strong> A localization system needs to fetch 6 language bundles in
         parallel, then merge all results.{' '}
         <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>withTaskGroup</code> spawns child
         tasks concurrently; the for-await loop collects all results, and cancellation propagates

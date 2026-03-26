@@ -111,9 +111,10 @@ export default function DispatchBarrierScene() {
       </div>
 
       <InfoCard>
-        <strong>Dispatch barrier</strong> lets you safely use a concurrent queue for reads
-        (parallel) while ensuring writes are exclusive. Readers run simultaneously; a barrier write
-        waits for all readers, then runs alone.
+        <strong>Real world:</strong> A caching layer serves images to multiple UI components reading
+        concurrently, but cache invalidation must write exclusively. A{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>barrier</code> flag on the write
+        block ensures no reads overlap with it — readers run in parallel, writes run alone.
       </InfoCard>
 
       <div className="section-heading">Concurrent Queue with Barrier</div>

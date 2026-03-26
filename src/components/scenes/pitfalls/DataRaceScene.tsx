@@ -151,9 +151,10 @@ export default function DataRaceScene() {
       </div>
 
       <InfoCard>
-        A data race happens when multiple threads read and write the same memory simultaneously
-        without synchronization. The result is <strong>undefined behavior</strong> — you may get
-        wrong values, crashes, or non-reproducible bugs.
+        <strong>Real world:</strong> An analytics SDK increments a shared event counter from
+        multiple network callback threads. Without synchronization, increments get lost — the final
+        count is wrong, and in production you get silent data loss or{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>EXC_BAD_ACCESS</code> crashes.
       </InfoCard>
 
       <div className="actor-box">

@@ -124,8 +124,9 @@ export default function SerialIsolationScene() {
       </div>
 
       <InfoCard>
-        A <strong>private serial queue</strong> as a mutex: all access to shared state funnels
-        through one queue, so no two operations can overlap. Simple and effective — no locks needed.
+        <strong>Real world:</strong> A logging framework buffers log entries from any thread. A
+        private serial queue funnels all writes through one lane — no two appends can overlap, no
+        locks needed. This is the classic pre-actor pattern for thread-safe state.
       </InfoCard>
 
       <div className="actor-box">

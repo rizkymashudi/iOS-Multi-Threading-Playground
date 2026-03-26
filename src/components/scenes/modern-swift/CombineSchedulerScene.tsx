@@ -160,10 +160,11 @@ export default function CombineSchedulerScene() {
       </div>
 
       <InfoCard>
-        In Combine, <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>subscribe(on:)</code>{' '}
-        sets where upstream work runs.{' '}
-        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>receive(on:)</code> sets where
-        values are <em>delivered</em>. Always add{' '}
+        <strong>Real world:</strong> A stock ticker app subscribes to price updates. Heavy JSON
+        parsing runs on a background queue via{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>subscribe(on:)</code>, then price
+        labels update on main via{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>receive(on:)</code>. Always add{' '}
         <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
           .receive(on: DispatchQueue.main)
         </code>{' '}

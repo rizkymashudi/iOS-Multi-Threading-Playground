@@ -174,9 +174,12 @@ export default function MainThreadScene() {
       </div>
 
       <InfoCard>
-        UIKit and SwiftUI are <strong>not thread-safe</strong>. All UI updates must happen on the
-        Main Thread. Updating UI from a background thread causes visual glitches, crashes, or silent
-        data corruption.
+        <strong>Real world:</strong> A chat app fetches new messages on a background thread, then
+        updates the conversation UI. If you set{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>tableView.reloadData()</code> from
+        that background thread, you get visual glitches or crashes. Always hop to{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>DispatchQueue.main.async</code>{' '}
+        before touching UI.
       </InfoCard>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

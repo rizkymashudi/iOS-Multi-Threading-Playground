@@ -131,8 +131,12 @@ export default function QoSScene() {
       </div>
 
       <InfoCard>
-        QoS (Quality of Service) tells the system how urgent your work is. Higher QoS gets more CPU
-        time. Watch how tasks with different priorities complete at different speeds.
+        <strong>Real world:</strong> A music streaming app uses{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>.userInteractive</code> for
+        playback controls, <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>.utility</code>{' '}
+        for downloading the next track, and{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>.background</code> for syncing the
+        library. QoS tells the OS which work matters most so the UI stays responsive.
       </InfoCard>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
