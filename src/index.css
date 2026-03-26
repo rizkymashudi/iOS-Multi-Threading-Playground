@@ -72,6 +72,42 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Scrollbar ─── */
+
+.sim-area,
+.nav,
+.code-scroll,
+.log-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg4) transparent;
+}
+
+.sim-area::-webkit-scrollbar,
+.nav::-webkit-scrollbar,
+.code-scroll::-webkit-scrollbar,
+.log-body::-webkit-scrollbar {
+  width: 6px;
+}
+.sim-area::-webkit-scrollbar-track,
+.nav::-webkit-scrollbar-track,
+.code-scroll::-webkit-scrollbar-track,
+.log-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sim-area::-webkit-scrollbar-thumb,
+.nav::-webkit-scrollbar-thumb,
+.code-scroll::-webkit-scrollbar-thumb,
+.log-body::-webkit-scrollbar-thumb {
+  background: var(--bg4);
+  border-radius: 3px;
+}
+.sim-area::-webkit-scrollbar-thumb:hover,
+.nav::-webkit-scrollbar-thumb:hover,
+.code-scroll::-webkit-scrollbar-thumb:hover,
+.log-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text3);
+}
+
 /* ─── App Layout ─── */
 
 .app {
