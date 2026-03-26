@@ -808,6 +808,64 @@ body {
   text-align: center;
 }
 
+/* ─── Actor Box ─── */
+
+.actor-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.actor-title {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.sendable-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+
+/* ─── Spin & Flash ─── */
+
+.spin {
+  display: inline-block;
+  animation: deadSpin 1.5s linear infinite;
+}
+
+.race-flash {
+  animation: raceFl 0.5s ease 3;
+}
+
+/* ─── Thread Pill ─── */
+
+.thread-pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-family: var(--mono);
+  color: #000;
+  font-weight: 600;
+  animation: slideIn 0.2s ease;
+  flex-shrink: 0;
+}
+
 /* ─── Code Syntax Highlighting ─── */
 
 .kw {
