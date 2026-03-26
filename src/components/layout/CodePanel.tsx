@@ -3,10 +3,11 @@ import { CODES } from '../../constants/codeSnippets'
 
 export default function CodePanel() {
   const activeSceneId = useSceneStore((s) => s.activeSceneId)
+  const codePanelOpen = useSceneStore((s) => s.codePanelOpen)
   const code = CODES[activeSceneId]
 
   return (
-    <div className="code-panel">
+    <div className={`code-panel${codePanelOpen ? ' mobile-open' : ''}`}>
       <div className="code-panel-header">
         <span
           style={{

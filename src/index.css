@@ -1180,6 +1180,170 @@ input[type='range']:focus-visible {
   }
 }
 
+/* ─── Code toggle button (hidden on desktop, visible on mobile/tablet) ─── */
+
+.code-toggle {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.code-toggle:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+.code-toggle.active {
+  background: var(--main-dim);
+  color: var(--main);
+  border-color: var(--main);
+}
+
+/* ─── Sidebar overlay (mobile only, hidden by default) ─── */
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* ─── Responsive: Tablet ─── */
+
+@media (max-width: 1024px) {
+  .code-panel {
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
+  }
+
+  .center-col {
+    max-width: calc(100vw - 260px);
+  }
+}
+
+/* ─── Responsive: Mobile ─── */
+
+@media (max-width: 767px) {
+  .app {
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Sidebar: overlay drawer from left */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 260px;
+    flex: none;
+    transform: translateX(0);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+  }
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    width: 260px;
+    flex: none;
+    box-shadow: none;
+  }
+  .sidebar.collapsed .sidebar-inner {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sidebar-inner {
+    width: 260px;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  /* Center column: full width */
+  .center-col {
+    flex: 1 1 0;
+    max-width: 100vw;
+    min-height: 0;
+  }
+
+  /* Topbar: always show expand button */
+  .expand-btn {
+    display: flex;
+  }
+
+  /* Show code toggle on mobile */
+  .code-toggle {
+    display: flex;
+  }
+
+  /* Speed control: hide label text */
+  .speed-control > span:nth-child(2) {
+    display: none;
+  }
+
+  /* Theme toggle: icon only */
+  .theme-toggle > span:last-child {
+    display: none;
+  }
+
+  /* Code panel: hidden by default, slide in as overlay */
+  .code-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+    flex: none;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    box-shadow: none;
+  }
+  .code-panel.mobile-open {
+    transform: translateX(0);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Sim area: adjust padding */
+  .sim-area {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+
+  /* Buttons: smaller on mobile */
+  .sim-btn-primary,
+  .sim-btn-danger,
+  .sim-btn {
+    padding: 6px 12px;
+    font-size: 10.5px;
+  }
+
+  /* Topbar: compact */
+  .topbar {
+    gap: 6px;
+    padding: 7px 10px;
+    min-height: 40px;
+  }
+  .scene-badge {
+    display: none;
+  }
+}
+
 /* ─── Reduced Motion ─── */
 
 @media (prefers-reduced-motion: reduce) {

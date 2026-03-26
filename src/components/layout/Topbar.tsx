@@ -7,6 +7,8 @@ export default function Topbar() {
   const activeSceneId = useSceneStore((s) => s.activeSceneId)
   const sidebarCollapsed = useSceneStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useSceneStore((s) => s.toggleSidebar)
+  const codePanelOpen = useSceneStore((s) => s.codePanelOpen)
+  const toggleCodePanel = useSceneStore((s) => s.toggleCodePanel)
   const speed = useSpeedStore((s) => s.speed)
   const setSpeed = useSpeedStore((s) => s.setSpeed)
   const isDark = useThemeStore((s) => s.isDark)
@@ -48,6 +50,15 @@ export default function Topbar() {
         />
         <span className="speed-val">{speed}&times;</span>
       </div>
+      <button
+        className={`code-toggle${codePanelOpen ? ' active' : ''}`}
+        onClick={toggleCodePanel}
+        title="Toggle Swift code panel"
+        aria-label={codePanelOpen ? 'Hide Swift code panel' : 'Show Swift code panel'}
+      >
+        <span style={{ fontSize: 12 }}>&lt;/&gt;</span>
+        <span>Code</span>
+      </button>
       <button
         className="theme-toggle"
         onClick={toggleTheme}
