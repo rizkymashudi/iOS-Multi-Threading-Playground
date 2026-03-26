@@ -1256,31 +1256,29 @@ input[type='range']:focus-visible {
 
 @media (max-width: 767px) {
   /*
-   * iOS Safari ignores 100vh when the URL bar is visible.
-   * position:fixed + inset:0 gives a truly full-viewport container
-   * without relying on any viewport-height unit.
+   * MOBILE STRATEGY: let the page scroll naturally.
+   * No viewport-height tricks, no internal scroll containers.
+   * The browser's native scroll handles everything — iOS Safari
+   * works perfectly with this because it's how the web works.
    */
   .app {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
   }
-
-  /* center-col is the only in-flow child (sidebar & code are fixed) */
   .center-col {
-    flex: 1 1 0%;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+    display: block;
+    width: 100%;
     max-width: none;
-    overflow: hidden;
+    overflow: visible;
   }
 
-  /* ── Topbar ── */
+  /* Topbar sticks to top while scrolling */
   .topbar {
-    flex: 0 0 auto;
+    position: sticky;
+    top: 0;
+    z-index: 50;
     gap: 6px;
     padding: 6px 10px;
     min-height: 42px;
@@ -1312,19 +1310,14 @@ input[type='range']:focus-visible {
     display: none;
   }
 
-  /*
-   * ── Sim area: the ONLY scrollable region ──
-   * flex:1 + min-height:0 lets it shrink below content size,
-   * then overflow-y:scroll enables the scroll.
-   */
+  /* Sim area: normal block flow, no scroll tricks */
   .sim-area {
-    flex: 1 1 0%;
-    min-height: 0;
-    overflow-y: scroll;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
     padding: 14px 12px;
-    gap: 12px;
+    min-height: auto;
+    overflow: visible;
   }
 
   /* ── Sidebar overlay drawer ── */
@@ -1432,15 +1425,17 @@ input[type='range']:focus-visible {
   }
   .thread-header {
     padding: 8px 10px;
+    flex-wrap: wrap;
+    gap: 4px;
   }
   .thread-name {
     font-size: 10.5px;
     gap: 5px;
     min-width: 0;
-    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1 1 0%;
   }
   .thread-track {
     padding: 8px 10px;
