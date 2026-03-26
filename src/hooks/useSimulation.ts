@@ -23,6 +23,10 @@ export default function useSimulation() {
   const logsRef = useRef(logs)
   logsRef.current = logs
 
+  // Destructure stable callbacks so reset/cleanup don't depend on the
+  // timeline object (which changes every render due to events/elapsedMs state).
+  const { clear: tlClear, stopAnimation: tlStop } = timeline
+
   const log = useCallback((id: string, msg: string, type: LogType = '', thread = '') => {
     const timestamp = new Date().toISOString().slice(14, 23)
     const color = THREAD_COLORS[thread] || 'var(--text3)'
@@ -46,17 +50,17 @@ export default function useSimulation() {
 
   const reset = useCallback(() => {
     clearAllTimers()
-    timeline.clear()
-    timeline.stopAnimation()
+    tlClear()
+    tlStop()
     setLogs({})
-  }, [clearAllTimers, timeline])
+  }, [clearAllTimers, tlClear, tlStop])
 
   useEffect(() => {
     return () => {
       clearAllTimers()
-      timeline.stopAnimation()
+      tlStop()
     }
-  }, [clearAllTimers, timeline])
+  }, [clearAllTimers, tlStop])
 
   return {
     later,
