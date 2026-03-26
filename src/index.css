@@ -1255,13 +1255,25 @@ input[type='range']:focus-visible {
 /* ─── Responsive: Mobile ─── */
 
 @media (max-width: 767px) {
+  /* ── Shell: full-screen column, sidebar & code as fixed overlays ── */
   .app {
-    flex-direction: column;
+    display: block;
+    width: 100%;
     height: 100vh;
     height: 100dvh;
+    overflow: hidden;
+    position: relative;
+  }
+  .center-col {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    overflow: hidden;
   }
 
-  /* Sidebar: overlay drawer from left */
+  /* ── Sidebar overlay drawer ── */
   .sidebar {
     position: fixed;
     top: 0;
@@ -1287,7 +1299,6 @@ input[type='range']:focus-visible {
   .sidebar-inner {
     width: 260px;
   }
-
   .sidebar-overlay {
     display: block;
     position: fixed;
@@ -1296,46 +1307,16 @@ input[type='range']:focus-visible {
     background: rgba(0, 0, 0, 0.45);
   }
 
-  /* Center column: full width, must constrain height for scroll */
-  .center-col {
-    flex: 1 1 0;
-    max-width: 100vw;
-    min-height: 0;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-  }
-
-  /* Topbar: always show expand button */
-  .expand-btn {
-    display: flex;
-  }
-
-  /* Show code toggle on mobile */
-  .code-toggle {
-    display: flex;
-  }
-
-  /* Speed control: hide label text */
-  .speed-control > span:nth-child(2) {
-    display: none;
-  }
-
-  /* Theme toggle: icon only */
-  .theme-toggle > span:last-child {
-    display: none;
-  }
-
-  /* Code panel: hidden by default, slide in as overlay */
+  /* ── Code panel overlay ── */
   .code-panel {
     position: fixed;
     top: 0;
     right: 0;
     bottom: 0;
     z-index: 100;
-    width: 300px;
-    min-width: 300px;
-    max-width: 300px;
+    width: 85vw;
+    max-width: 320px;
+    min-width: 0;
     flex: none;
     transform: translateX(100%);
     transition: transform 0.25s ease;
@@ -1356,46 +1337,18 @@ input[type='range']:focus-visible {
     background: rgba(0, 0, 0, 0.45);
   }
 
-  /* Sim area: force scroll on iOS Safari */
-  .sim-area {
-    flex: 1 1 0;
-    height: 0;
-    min-height: 0;
-    padding: 10px 8px;
-    gap: 8px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Buttons and controls: compact, allow wrapping */
-  .controls {
-    gap: 5px;
-    flex-wrap: wrap;
-  }
-  .sim-btn-primary,
-  .sim-btn-danger,
-  .sim-btn {
-    padding: 5px 10px;
-    font-size: 10px;
-  }
-  .slider-row {
-    min-width: 0 !important;
-    flex: 1 1 120px;
-  }
-  .slider-row span {
-    font-size: 10px;
-  }
-  .slider-row input[type='range'] {
-    flex: 1;
-    min-width: 0;
-  }
-
-  /* Topbar: compact */
+  /* ── Topbar: compact, show menu + code toggle ── */
   .topbar {
+    flex-shrink: 0;
     gap: 6px;
-    padding: 7px 10px;
-    min-height: 38px;
+    padding: 6px 10px;
+    min-height: 40px;
+  }
+  .expand-btn {
+    display: flex;
+  }
+  .code-toggle {
+    display: flex;
   }
   .scene-title {
     font-size: 12px;
@@ -1404,24 +1357,85 @@ input[type='range']:focus-visible {
     display: none;
   }
   .speed-control {
-    padding: 3px 8px;
+    padding: 3px 7px;
     font-size: 10px;
-    gap: 4px;
+    gap: 3px;
+  }
+  .speed-control > span:nth-child(2) {
+    display: none;
   }
   .speed-control input[type='range'] {
-    width: 40px;
+    width: 36px;
   }
   .speed-val {
     font-size: 10px;
   }
+  .theme-toggle > span:last-child {
+    display: none;
+  }
 
-  /* ThreadContainer: compact */
-  .thread-header {
-    padding: 6px 10px;
+  /* ── Sim area: THE scroll container ── */
+  .sim-area {
+    flex: 1;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  /* ── Controls row ── */
+  .controls {
+    gap: 6px;
+  }
+  .sim-btn-primary,
+  .sim-btn-danger,
+  .sim-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  .slider-row {
+    min-width: 0 !important;
+    flex: 1 1 100px;
+  }
+  .slider-row span {
+    font-size: 11px;
+  }
+  .slider-row input[type='range'] {
+    flex: 1;
     min-width: 0;
   }
+
+  /* ── InfoCard ── */
+  .info-card {
+    padding: 10px 12px;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .info-card code {
+    font-size: 10px !important;
+  }
+
+  /* ── Section headings ── */
+  .section-heading {
+    font-size: 11.5px;
+    margin-bottom: 4px;
+    gap: 5px;
+  }
+  .section-heading > span[style] {
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  /* ── ThreadContainer ── */
+  .thread-container {
+    border-radius: 8px;
+  }
+  .thread-header {
+    padding: 7px 10px;
+  }
   .thread-name {
-    font-size: 9.5px;
+    font-size: 10px;
     gap: 5px;
     min-width: 0;
     flex: 1;
@@ -1430,55 +1444,41 @@ input[type='range']:focus-visible {
     white-space: nowrap;
   }
   .thread-track {
-    padding: 6px 8px;
-    min-height: 36px;
+    padding: 8px 10px;
+    min-height: 32px;
     gap: 4px;
     flex-wrap: wrap;
-    overflow-x: auto;
   }
   .task-block {
-    padding: 3px 6px;
-    font-size: 9px;
-    gap: 3px;
-    white-space: nowrap;
-    flex-shrink: 0;
+    padding: 4px 8px;
+    font-size: 10px;
+    gap: 4px;
   }
   .task-dot {
     width: 5px;
     height: 5px;
   }
   .status-pill {
-    font-size: 8.5px;
-    padding: 1px 6px;
+    font-size: 9px;
+    padding: 2px 7px;
   }
 
-  /* InfoCard: compact */
-  .info-card {
-    padding: 8px 10px;
-    font-size: 11px;
-    line-height: 1.5;
+  /* ── Timeline ── */
+  .timeline-panel {
+    border-radius: 8px;
   }
-
-  /* Section headings */
-  .section-heading {
-    font-size: 11px;
-    margin-bottom: 4px;
-    gap: 5px;
-  }
-
-  /* Timeline: compact */
   .timeline-header {
-    padding: 6px 10px;
+    padding: 7px 10px;
   }
   .timeline-title {
-    font-size: 9px;
+    font-size: 9.5px;
   }
   .timeline-body {
-    --tl-label-w: 70px;
-    padding: 8px 8px 10px;
+    --tl-label-w: 72px;
+    padding: 8px 10px 10px;
   }
   .tl-label {
-    font-size: 8px;
+    font-size: 8.5px;
   }
   .tl-tick {
     font-size: 7.5px;
@@ -1493,29 +1493,33 @@ input[type='range']:focus-visible {
     padding: 0 3px;
   }
 
-  /* LogPanel: compact */
+  /* ── LogPanel ── */
+  .log-panel {
+    border-radius: 8px;
+  }
   .log-header {
-    padding: 6px 10px;
+    padding: 7px 10px;
   }
   .log-title {
-    font-size: 9px;
+    font-size: 9.5px;
   }
   .log-body {
-    padding: 6px 8px;
-    height: 110px;
-    font-size: 9.5px;
+    padding: 8px 10px;
+    height: 120px;
+    font-size: 10px;
     line-height: 1.6;
   }
   .log-entry {
     gap: 6px;
   }
 
-  /* Actor box */
+  /* ── Actor box ── */
   .actor-box {
-    padding: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
   }
   .actor-title {
-    font-size: 10px;
+    font-size: 10.5px;
     margin-bottom: 8px;
     gap: 5px;
   }
@@ -1525,35 +1529,36 @@ input[type='range']:focus-visible {
     gap: 5px;
   }
   .queue-item {
-    font-size: 9px;
-    padding: 2px 7px;
+    font-size: 9.5px;
+    padding: 3px 7px;
   }
 
-  /* Warning box */
+  /* ── Warning box ── */
   .warning-box {
     padding: 10px 12px;
     gap: 8px;
+    border-radius: 8px;
   }
   .warning-icon {
     font-size: 14px;
   }
   .warning-title {
-    font-size: 11px;
+    font-size: 11.5px;
   }
   .warning-body {
-    font-size: 10.5px;
+    font-size: 11px;
   }
 
-  /* Progress bar */
+  /* ── Progress bar ── */
   .progress-bar {
-    height: 2px;
-    margin-top: 3px;
+    height: 3px;
+    margin-top: 4px;
   }
 
-  /* Thread pill (ThreadExplosionScene) */
+  /* ── Thread pill (ThreadExplosionScene) ── */
   .thread-pill {
-    font-size: 8px;
-    padding: 1px 5px;
+    font-size: 8.5px;
+    padding: 2px 6px;
   }
 }
 
