@@ -6,6 +6,7 @@ export interface LogEntry {
   thread: string
   message: string
   type: LogType
+  color?: string
 }
 
 export interface TaskBlockProps {
