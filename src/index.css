@@ -1255,22 +1255,76 @@ input[type='range']:focus-visible {
 /* ─── Responsive: Mobile ─── */
 
 @media (max-width: 767px) {
-  /* ── Shell: full-screen column, sidebar & code as fixed overlays ── */
+  /*
+   * iOS Safari ignores 100vh when the URL bar is visible.
+   * position:fixed + inset:0 gives a truly full-viewport container
+   * without relying on any viewport-height unit.
+   */
   .app {
-    display: block;
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-    position: relative;
-  }
-  .center-col {
+    position: fixed;
+    inset: 0;
     display: flex;
     flex-direction: column;
-    width: 100%;
-    height: 100%;
+    overflow: hidden;
+  }
+
+  /* center-col is the only in-flow child (sidebar & code are fixed) */
+  .center-col {
+    flex: 1 1 0%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     max-width: none;
     overflow: hidden;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    flex: 0 0 auto;
+    gap: 6px;
+    padding: 6px 10px;
+    min-height: 42px;
+  }
+  .expand-btn {
+    display: flex;
+  }
+  .code-toggle {
+    display: flex;
+  }
+  .scene-title {
+    font-size: 13px;
+  }
+  .scene-badge {
+    display: none;
+  }
+  .speed-control {
+    padding: 3px 8px;
+    font-size: 10px;
+    gap: 4px;
+  }
+  .speed-control > span:nth-child(2) {
+    display: none;
+  }
+  .speed-control input[type='range'] {
+    width: 40px;
+  }
+  .theme-toggle > span:last-child {
+    display: none;
+  }
+
+  /*
+   * ── Sim area: the ONLY scrollable region ──
+   * flex:1 + min-height:0 lets it shrink below content size,
+   * then overflow-y:scroll enables the scroll.
+   */
+  .sim-area {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 12px;
+    gap: 12px;
   }
 
   /* ── Sidebar overlay drawer ── */
@@ -1320,7 +1374,6 @@ input[type='range']:focus-visible {
     flex: none;
     transform: translateX(100%);
     transition: transform 0.25s ease;
-    box-shadow: none;
   }
   .code-panel.mobile-open {
     transform: translateX(0);
@@ -1337,69 +1390,19 @@ input[type='range']:focus-visible {
     background: rgba(0, 0, 0, 0.45);
   }
 
-  /* ── Topbar: compact, show menu + code toggle ── */
-  .topbar {
-    flex-shrink: 0;
-    gap: 6px;
-    padding: 6px 10px;
-    min-height: 40px;
-  }
-  .expand-btn {
-    display: flex;
-  }
-  .code-toggle {
-    display: flex;
-  }
-  .scene-title {
-    font-size: 12px;
-  }
-  .scene-badge {
-    display: none;
-  }
-  .speed-control {
-    padding: 3px 7px;
-    font-size: 10px;
-    gap: 3px;
-  }
-  .speed-control > span:nth-child(2) {
-    display: none;
-  }
-  .speed-control input[type='range'] {
-    width: 36px;
-  }
-  .speed-val {
-    font-size: 10px;
-  }
-  .theme-toggle > span:last-child {
-    display: none;
-  }
-
-  /* ── Sim area: THE scroll container ── */
-  .sim-area {
-    flex: 1;
-    overflow-y: scroll;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    padding: 12px;
-    gap: 10px;
-  }
-
-  /* ── Controls row ── */
+  /* ── Controls ── */
   .controls {
     gap: 6px;
   }
   .sim-btn-primary,
   .sim-btn-danger,
   .sim-btn {
-    padding: 6px 12px;
-    font-size: 11px;
+    padding: 7px 14px;
+    font-size: 11.5px;
   }
   .slider-row {
     min-width: 0 !important;
     flex: 1 1 100px;
-  }
-  .slider-row span {
-    font-size: 11px;
   }
   .slider-row input[type='range'] {
     flex: 1;
@@ -1409,22 +1412,18 @@ input[type='range']:focus-visible {
   /* ── InfoCard ── */
   .info-card {
     padding: 10px 12px;
-    font-size: 11.5px;
-    line-height: 1.5;
+    font-size: 12px;
+    line-height: 1.55;
   }
   .info-card code {
-    font-size: 10px !important;
+    font-size: 10.5px !important;
   }
 
   /* ── Section headings ── */
   .section-heading {
-    font-size: 11.5px;
-    margin-bottom: 4px;
-    gap: 5px;
-  }
-  .section-heading > span[style] {
-    width: 8px !important;
-    height: 8px !important;
+    font-size: 12px;
+    gap: 6px;
+    margin-bottom: 2px;
   }
 
   /* ── ThreadContainer ── */
@@ -1432,10 +1431,10 @@ input[type='range']:focus-visible {
     border-radius: 8px;
   }
   .thread-header {
-    padding: 7px 10px;
+    padding: 8px 10px;
   }
   .thread-name {
-    font-size: 10px;
+    font-size: 10.5px;
     gap: 5px;
     min-width: 0;
     flex: 1;
@@ -1445,13 +1444,13 @@ input[type='range']:focus-visible {
   }
   .thread-track {
     padding: 8px 10px;
-    min-height: 32px;
-    gap: 4px;
+    min-height: 36px;
+    gap: 5px;
     flex-wrap: wrap;
   }
   .task-block {
-    padding: 4px 8px;
-    font-size: 10px;
+    padding: 4px 9px;
+    font-size: 10.5px;
     gap: 4px;
   }
   .task-dot {
@@ -1461,6 +1460,7 @@ input[type='range']:focus-visible {
   .status-pill {
     font-size: 9px;
     padding: 2px 7px;
+    flex-shrink: 0;
   }
 
   /* ── Timeline ── */
@@ -1468,10 +1468,7 @@ input[type='range']:focus-visible {
     border-radius: 8px;
   }
   .timeline-header {
-    padding: 7px 10px;
-  }
-  .timeline-title {
-    font-size: 9.5px;
+    padding: 8px 10px;
   }
   .timeline-body {
     --tl-label-w: 72px;
@@ -1498,39 +1495,31 @@ input[type='range']:focus-visible {
     border-radius: 8px;
   }
   .log-header {
-    padding: 7px 10px;
-  }
-  .log-title {
-    font-size: 9.5px;
+    padding: 8px 10px;
   }
   .log-body {
     padding: 8px 10px;
     height: 120px;
-    font-size: 10px;
+    font-size: 10.5px;
     line-height: 1.6;
-  }
-  .log-entry {
-    gap: 6px;
   }
 
   /* ── Actor box ── */
   .actor-box {
-    padding: 10px 12px;
+    padding: 12px;
     border-radius: 8px;
   }
   .actor-title {
-    font-size: 10.5px;
+    font-size: 11px;
     margin-bottom: 8px;
-    gap: 5px;
   }
   .actor-task {
-    padding: 5px 9px;
-    font-size: 10px;
-    gap: 5px;
+    padding: 6px 10px;
+    font-size: 10.5px;
   }
   .queue-item {
-    font-size: 9.5px;
-    padding: 3px 7px;
+    font-size: 10px;
+    padding: 3px 8px;
   }
 
   /* ── Warning box ── */
@@ -1539,25 +1528,16 @@ input[type='range']:focus-visible {
     gap: 8px;
     border-radius: 8px;
   }
-  .warning-icon {
-    font-size: 14px;
-  }
   .warning-title {
-    font-size: 11.5px;
+    font-size: 12px;
   }
   .warning-body {
     font-size: 11px;
   }
 
-  /* ── Progress bar ── */
-  .progress-bar {
-    height: 3px;
-    margin-top: 4px;
-  }
-
   /* ── Thread pill (ThreadExplosionScene) ── */
   .thread-pill {
-    font-size: 8.5px;
+    font-size: 9px;
     padding: 2px 6px;
   }
 }
