@@ -72,6 +72,42 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Scrollbar ─── */
+
+.sim-area,
+.nav,
+.code-scroll,
+.log-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg4) transparent;
+}
+
+.sim-area::-webkit-scrollbar,
+.nav::-webkit-scrollbar,
+.code-scroll::-webkit-scrollbar,
+.log-body::-webkit-scrollbar {
+  width: 6px;
+}
+.sim-area::-webkit-scrollbar-track,
+.nav::-webkit-scrollbar-track,
+.code-scroll::-webkit-scrollbar-track,
+.log-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sim-area::-webkit-scrollbar-thumb,
+.nav::-webkit-scrollbar-thumb,
+.code-scroll::-webkit-scrollbar-thumb,
+.log-body::-webkit-scrollbar-thumb {
+  background: var(--bg4);
+  border-radius: 3px;
+}
+.sim-area::-webkit-scrollbar-thumb:hover,
+.nav::-webkit-scrollbar-thumb:hover,
+.code-scroll::-webkit-scrollbar-thumb:hover,
+.log-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text3);
+}
+
 /* ─── App Layout ─── */
 
 .app {
@@ -392,6 +428,29 @@ body {
   color: var(--text3);
 }
 
+.code-panel-close {
+  display: none;
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.code-panel-close:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+
+.code-panel-overlay {
+  display: none;
+}
+
 .code-scroll {
   flex: 1;
   overflow-y: auto;
@@ -688,13 +747,14 @@ body {
 }
 
 .timeline-body {
+  --tl-label-w: 106px;
   padding: 10px 12px 12px;
   overflow-x: hidden;
 }
 
 .tl-ruler {
   display: flex;
-  margin-left: 106px;
+  margin-left: var(--tl-label-w);
   margin-bottom: 4px;
 }
 
@@ -724,7 +784,7 @@ body {
 }
 
 .tl-label {
-  width: 106px;
+  width: var(--tl-label-w);
   flex-shrink: 0;
   font-family: var(--mono);
   font-size: 9.5px;
@@ -1044,6 +1104,24 @@ body {
   cursor: not-allowed;
 }
 
+/* ─── Focus Rings ─── */
+
+.nav-item:focus-visible,
+.sim-btn:focus-visible,
+.sim-btn-primary:focus-visible,
+.sim-btn-danger:focus-visible,
+.sidebar-toggle:focus-visible,
+.expand-btn:focus-visible,
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--main);
+  outline-offset: 2px;
+}
+
+input[type='range']:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
 /* ─── Keyframes ─── */
 
 @keyframes slideIn {
@@ -1123,6 +1201,339 @@ body {
   to {
     opacity: 1;
     transform: scaleX(1);
+  }
+}
+
+/* ─── Code toggle button (hidden on desktop, visible on mobile/tablet) ─── */
+
+.code-toggle {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.code-toggle:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+.code-toggle.active {
+  background: var(--main-dim);
+  color: var(--main);
+  border-color: var(--main);
+}
+
+/* ─── Sidebar overlay (mobile only, hidden by default) ─── */
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* ─── Responsive: Tablet ─── */
+
+@media (max-width: 1024px) {
+  .code-panel {
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
+  }
+
+  .center-col {
+    max-width: calc(100vw - 260px);
+  }
+}
+
+/* ─── Responsive: Mobile ─── */
+
+@media (max-width: 767px) {
+  /*
+   * MOBILE STRATEGY: let the page scroll naturally.
+   * No viewport-height tricks, no internal scroll containers.
+   * The browser's native scroll handles everything — iOS Safari
+   * works perfectly with this because it's how the web works.
+   */
+  .app {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .center-col {
+    display: block;
+    width: 100%;
+    max-width: none;
+    overflow: visible;
+  }
+
+  /* Topbar sticks to top while scrolling */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    gap: 6px;
+    padding: 6px 10px;
+    min-height: 42px;
+  }
+  .expand-btn {
+    display: flex;
+  }
+  .code-toggle {
+    display: flex;
+  }
+  .scene-title {
+    font-size: 13px;
+  }
+  .scene-badge {
+    display: none;
+  }
+  .speed-control {
+    padding: 3px 8px;
+    font-size: 10px;
+    gap: 4px;
+  }
+  .speed-control > span:nth-child(2) {
+    display: none;
+  }
+  .speed-control input[type='range'] {
+    width: 40px;
+  }
+  .theme-toggle > span:last-child {
+    display: none;
+  }
+
+  /* Sim area: normal block flow, no scroll tricks */
+  .sim-area {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px 12px;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  /* ── Sidebar overlay drawer ── */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 260px;
+    flex: none;
+    transform: translateX(0);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+  }
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    width: 260px;
+    flex: none;
+    box-shadow: none;
+  }
+  .sidebar.collapsed .sidebar-inner {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sidebar-inner {
+    width: 260px;
+  }
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  /* ── Code panel overlay ── */
+  .code-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 85vw;
+    max-width: 320px;
+    min-width: 0;
+    flex: none;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+  }
+  .code-panel.mobile-open {
+    transform: translateX(0);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+  }
+  .code-panel-close {
+    display: flex;
+  }
+  .code-panel-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  /* ── Controls ── */
+  .controls {
+    gap: 6px;
+  }
+  .sim-btn-primary,
+  .sim-btn-danger,
+  .sim-btn {
+    padding: 7px 14px;
+    font-size: 11.5px;
+  }
+  .slider-row {
+    min-width: 0 !important;
+    flex: 1 1 100px;
+  }
+  .slider-row input[type='range'] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ── InfoCard ── */
+  .info-card {
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  .info-card code {
+    font-size: 10.5px !important;
+  }
+
+  /* ── Section headings ── */
+  .section-heading {
+    font-size: 12px;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+
+  /* ── ThreadContainer ── */
+  .thread-container {
+    border-radius: 8px;
+  }
+  .thread-header {
+    padding: 8px 10px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .thread-name {
+    font-size: 10.5px;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 0%;
+  }
+  .thread-track {
+    padding: 8px 10px;
+    min-height: 36px;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .task-block {
+    padding: 4px 9px;
+    font-size: 10.5px;
+    gap: 4px;
+  }
+  .task-dot {
+    width: 5px;
+    height: 5px;
+  }
+  .status-pill {
+    font-size: 9px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+  }
+
+  /* ── Timeline ── */
+  .timeline-panel {
+    border-radius: 8px;
+  }
+  .timeline-header {
+    padding: 8px 10px;
+  }
+  .timeline-body {
+    --tl-label-w: 72px;
+    padding: 8px 10px 10px;
+  }
+  .tl-label {
+    font-size: 8.5px;
+  }
+  .tl-tick {
+    font-size: 7.5px;
+  }
+  .tl-track {
+    height: 18px;
+  }
+  .tl-block {
+    height: 14px;
+    top: 2px;
+    font-size: 7.5px;
+    padding: 0 3px;
+  }
+
+  /* ── LogPanel ── */
+  .log-panel {
+    border-radius: 8px;
+  }
+  .log-header {
+    padding: 8px 10px;
+  }
+  .log-body {
+    padding: 8px 10px;
+    height: 120px;
+    font-size: 10.5px;
+    line-height: 1.6;
+  }
+
+  /* ── Actor box ── */
+  .actor-box {
+    padding: 12px;
+    border-radius: 8px;
+  }
+  .actor-title {
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+  .actor-task {
+    padding: 6px 10px;
+    font-size: 10.5px;
+  }
+  .queue-item {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  /* ── Warning box ── */
+  .warning-box {
+    padding: 10px 12px;
+    gap: 8px;
+    border-radius: 8px;
+  }
+  .warning-title {
+    font-size: 12px;
+  }
+  .warning-body {
+    font-size: 11px;
+  }
+
+  /* ── Thread pill (ThreadExplosionScene) ── */
+  .thread-pill {
+    font-size: 9px;
+    padding: 2px 6px;
   }
 }
 

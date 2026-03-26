@@ -135,9 +135,10 @@ export default function SwiftActorsScene() {
       </div>
 
       <InfoCard>
-        Swift <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>actor</code> automatically
-        serializes all access to its state. Concurrent callers queue up — one at a time enters the
-        actor, ensuring no data races, enforced at compile time.
+        <strong>Real world:</strong> A shopping cart shared across multiple screens uses an{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>actor</code> to protect its items
+        array. Concurrent add/remove calls from different views are automatically serialized — no
+        data races, enforced at compile time.
       </InfoCard>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

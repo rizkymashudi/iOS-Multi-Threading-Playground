@@ -188,9 +188,11 @@ export default function GCDScene() {
       </div>
 
       <InfoCard>
-        <strong>Serial queue</strong> executes one task at a time in order.{' '}
-        <strong>Concurrent queue</strong> runs multiple tasks simultaneously on the thread pool.
-        Watch how tasks flow differently through each.
+        <strong>Real world:</strong> An image gallery app downloads thumbnails. A serial queue
+        processes them one-by-one to update a database in order; a concurrent queue downloads all
+        images in parallel for faster loading.{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>DispatchQueue</code> lets you
+        choose the right strategy for each job.
       </InfoCard>
 
       <div className="section-heading">

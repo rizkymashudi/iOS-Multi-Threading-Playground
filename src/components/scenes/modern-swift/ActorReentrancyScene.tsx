@@ -166,10 +166,11 @@ export default function ActorReentrancyScene() {
       </div>
 
       <InfoCard>
-        When an actor <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>await</code>s
-        something, it <em>suspends</em> and lets other tasks in. Those tasks can mutate actor state
-        before the original resumes — invalidating assumptions the first task made before
-        suspending.
+        <strong>Real world:</strong> A bank account actor checks the balance, then{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>await</code>s a network
+        confirmation. While suspended, another withdrawal enters and drains the balance — the first
+        resumes and double-spends. Always re-check state after every{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>await</code>.
       </InfoCard>
 
       <div className="actor-box">

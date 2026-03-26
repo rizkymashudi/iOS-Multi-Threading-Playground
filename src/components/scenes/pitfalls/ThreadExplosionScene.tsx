@@ -110,9 +110,9 @@ export default function ThreadExplosionScene() {
       </div>
 
       <InfoCard>
-        Calling <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>.sync</code> on a
-        concurrent queue from within a concurrent task blocks a thread, forcing GCD to spawn a new
-        thread to compensate. This cascades into hundreds of threads — exhausting system resources.
+        <strong>Real world:</strong> A file sync app dispatches hundreds of concurrent file reads.
+        Each blocks waiting on I/O, forcing GCD to spawn new threads to keep up. Past 64 threads the
+        system starves — the app hangs, memory spikes, and the watchdog kills it.
       </InfoCard>
 
       <div className="section-heading">Active Threads</div>

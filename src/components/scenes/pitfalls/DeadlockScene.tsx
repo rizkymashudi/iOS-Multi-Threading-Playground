@@ -214,10 +214,12 @@ export default function DeadlockScene() {
       </div>
 
       <InfoCard>
-        A deadlock occurs when Thread A waits for Thread B, and Thread B waits for Thread A — both
-        block forever. The most common iOS deadlock: calling{' '}
-        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>DispatchQueue.main.sync</code>{' '}
-        <em>from</em> the main thread.
+        <strong>Real world:</strong> A payment SDK calls{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>DispatchQueue.main.sync</code> to
+        read a UI token from a callback already on the main thread. The app freezes permanently —
+        the main thread waits for itself. Always use{' '}
+        <code style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>.async</code> when dispatching to
+        the current queue.
       </InfoCard>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
