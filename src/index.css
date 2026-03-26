@@ -838,6 +838,38 @@ body {
   border-radius: 99px;
 }
 
+/* ─── Actor Queue ─── */
+
+.actor-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.actor-task {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  animation: slideIn 0.28s ease;
+}
+
+.queue-item {
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  border: 1px solid var(--border2);
+  background: var(--bg4);
+  color: var(--text2);
+  animation: slideIn 0.22s ease;
+}
+
 /* ─── Spin & Flash ─── */
 
 .spin {
