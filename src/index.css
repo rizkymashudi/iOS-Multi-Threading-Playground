@@ -1044,6 +1044,24 @@ body {
   cursor: not-allowed;
 }
 
+/* ─── Focus Rings ─── */
+
+.nav-item:focus-visible,
+.sim-btn:focus-visible,
+.sim-btn-primary:focus-visible,
+.sim-btn-danger:focus-visible,
+.sidebar-toggle:focus-visible,
+.expand-btn:focus-visible,
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--main);
+  outline-offset: 2px;
+}
+
+input[type='range']:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
 /* ─── Keyframes ─── */
 
 @keyframes slideIn {
